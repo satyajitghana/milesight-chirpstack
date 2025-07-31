@@ -1,99 +1,384 @@
-# ChirpStack Docker example
+# ChirpStack Docker Setup with Milesight IoT Integration 🚀
 
-This repository contains a skeleton to setup the [ChirpStack](https://www.chirpstack.io)
-open-source LoRaWAN Network Server (v4) using [Docker Compose](https://docs.docker.com/compose/).
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![ChirpStack](https://img.shields.io/badge/ChirpStack-v4-00D4AA?style=flat-square&logo=chirpstack&logoColor=white)](https://www.chirpstack.io)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![LoRaWAN](https://img.shields.io/badge/LoRaWAN-1.0.3-FF6B35?style=flat-square&logo=lora&logoColor=white)](https://lora-alliance.org)
+[![Milesight](https://img.shields.io/badge/Milesight-IoT-0066CC?style=flat-square&logo=milesight&logoColor=white)](https://www.milesight-iot.com)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](LICENSE.md)
 
-**Note:** Please use this `docker-compose.yml` file as a starting point for testing
-but keep in mind that for production usage it might need modifications. 
+This repository contains a complete solution for setting up [ChirpStack](https://www.chirpstack.io) LoRaWAN Network Server (v4) with [Docker Compose](https://docs.docker.com/compose/) and comprehensive CLI tools for managing Milesight IoT devices.
 
-## Directory layout
+## 🎯 Features
 
-* `docker-compose.yml`: the docker-compose file containing the services
-* `configuration/chirpstack`: directory containing the ChirpStack configuration files
-* `configuration/chirpstack-gateway-bridge`: directory containing the ChirpStack Gateway Bridge configuration
-* `configuration/mosquitto`: directory containing the Mosquitto (MQTT broker) configuration
-* `configuration/postgresql/initdb/`: directory containing PostgreSQL initialization scripts
+- **🐳 Docker-based ChirpStack**: Easy deployment with Docker Compose
+- **🛠️ CLI Management Tools**: Comprehensive command-line interface for device management
+- **📡 Milesight Integration**: Pre-configured device profiles for WS202/WS203 sensors  
+- **🔄 Automated Configuration**: Step-by-step setup scripts with duplicate detection
+- **📊 Live Dashboard**: Real-time IoT data monitoring with beautiful UI
+- **🔐 Security**: API key management and secure MQTT connections
+- **📱 OTAA Support**: Automatic device activation with proper key management
 
-## Configuration
+## 📋 Quick Start
 
-This setup is pre-configured for all regions. You can either connect a ChirpStack Gateway Bridge
-instance (v3.14.0+) to the MQTT broker (port 1883) or connect a Semtech UDP Packet Forwarder.
-Please note that:
-
-* You must prefix the MQTT topic with the region.
-  Please see the region configuration files in the `configuration/chirpstack` for a list
-  of topic prefixes (e.g. eu868, us915_0, au915_0, as923_2, ...).
-* The protobuf marshaler is configured.
-
-This setup also comes with two instances of the ChirpStack Gateway Bridge. One
-is configured to handle the Semtech UDP Packet Forwarder data (port 1700), the
-other is configured to handle the Basics Station protocol (port 3001). Both
-instances are by default configured for EU868 (using the `eu868` MQTT topic
-prefix).
-
-### Reconfigure regions
-
-ChirpStack has at least one configuration of each region enabled. You will find
-the list of `enabled_regions` in `configuration/chirpstack/chirpstack.toml`.
-Each entry in `enabled_regions` refers to the `id` that can be found in the
-`region_XXX.toml` file. This `region_XXX.toml` also contains a `topic_prefix`
-configuration which you need to configure the ChirpStack Gateway Bridge
-UDP instance (see below).
-
-#### ChirpStack Gateway Bridge (UDP)
-
-Within the `docker-compose.yml` file, you must replace the `eu868` prefix in the
-`INTEGRATION__..._TOPIC_TEMPLATE` configuration with the MQTT `topic_prefix` of
-the region you would like to use (e.g. `us915_0`, `au915_0`, `in865`, ...).
-
-#### ChirpStack Gateway Bridge (Basics Station)
-
-Within the `docker-compose.yml` file, you must update the configuration file
-that the ChirpStack Gateway Bridge instance must used. The default is
-`chirpstack-gateway-bridge-basicstation-eu868.toml`. For available
-configuration files, please see the `configuration/chirpstack-gateway-bridge`
-directory.
-
-# Data persistence
-
-PostgreSQL and Redis data is persisted in Docker volumes, see the `docker-compose.yml`
-`volumes` definition.
-
-## Requirements
-
-Before using this `docker-compose.yml` file, make sure you have [Docker](https://www.docker.com/community-edition)
-installed.
-
-## Importing device repository
-
-To import the [lorawan-devices](https://github.com/TheThingsNetwork/lorawan-devices)
-repository (optional step), run the following command:
+### 1. Start ChirpStack Server
 
 ```bash
-make import-lorawan-devices
+# Clone this repository
+git clone <repository-url>
+cd chirpstack-docker
+
+# Start ChirpStack with Docker Compose
+docker-compose up -d
+
+# Verify services are running
+docker-compose ps
 ```
 
-This will clone the `lorawan-devices` repository and execute the import command of ChirpStack.
-Please note that for this step you need to have the `make` command installed.
+Access ChirpStack web UI at: **http://localhost:8080**
 
-**Note:** an older snapshot of the `lorawan-devices` repository is cloned as the
-latest revision no longer contains a `LICENSE` file.
-
-## Usage
-
-To start the ChirpStack simply run:
+### 2. Configure Your Environment
 
 ```bash
-$ docker-compose up
+# Install Python dependencies
+pip install -r requirements.txt
+# or using Poetry
+poetry install
+
+# Set your API key (get from ChirpStack web UI)
+export CHIRPSTACK_API_KEY="your_api_key_here"
+export CHIRPSTACK_SERVER="localhost:8080"
 ```
 
-After all the components have been initialized and started, you should be able
-to open http://localhost:8080/ in your browser.
+### 3. Run the Configuration Demo
 
-##
+```bash
+# Interactive step-by-step setup guide
+python demo.py
 
-The example includes the [ChirpStack REST API](https://github.com/chirpstack/chirpstack-rest-api).
-You should be able to access the UI by opening http://localhost:8090 in your browser.
+# Or use individual CLI commands
+python chirpstack_cli.py check-auth
+python chirpstack_cli.py add-gateways
+python chirpstack_cli.py add-profiles  
+python chirpstack_cli.py add-devices
+```
 
-**Note:** It is recommended to use the [gRPC](https://www.chirpstack.io/docs/chirpstack/api/grpc.html)
-interface over the [REST](https://www.chirpstack.io/docs/chirpstack/api/rest.html) interface.
+## 🏗️ Complete Setup Workflow
+
+### Step 1: ChirpStack Server Setup
+
+1. **Start ChirpStack Docker**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Access Web UI**: Open http://localhost:8080 
+   - Default login: `admin` / `admin`
+
+3. **Create API Key**: 
+   - Go to **Tenants** → **Default** → **API Keys**
+   - Create new key with full permissions
+   - Copy the JWT token for CLI usage
+
+### Step 2: Milesight Gateway Configuration (UG63)
+
+1. **Access Gateway Web Interface**:
+   - Connect to your Milesight UG63 gateway
+   - Login to the web interface
+
+2. **Configure Packet Forwarding**:
+   - Navigate to **LoRaWAN** → **Packet Forwarder**
+   - Set **Server Address**: `beast2.local` (or your ChirpStack server IP)
+   - Set **Server Port**: `1700` (UDP)
+   - Set **Protocol**: `Semtech UDP`
+   - Enable packet forwarding
+
+3. **Network Settings**:
+   - **Frequency Plan**: Select your region (e.g., IN865 for India)
+   - **Gateway EUI**: Note this for ChirpStack registration
+
+### Step 3: Register Gateway in ChirpStack
+
+Using the CLI tool:
+
+```bash
+# Add your gateway to ChirpStack
+python chirpstack_cli.py add-gateway \
+  --id "your_gateway_eui" \
+  --name "Main Building Gateway" \
+  --description "Milesight UG63 Gateway" \
+  --lat 28.6139 --lon 77.2090
+
+# Verify gateway is connected
+python chirpstack_cli.py list-gateways
+```
+
+Or edit `gateways.json` and run:
+```bash
+python chirpstack_cli.py add-gateways
+```
+
+### Step 4: Add Device Profiles
+
+Device profiles contain the decoders for your IoT sensors:
+
+```bash
+# Add Milesight WS202 and WS203 profiles with decoders
+python chirpstack_cli.py add-profiles
+
+# Verify profiles were created
+python chirpstack_cli.py list-profiles
+```
+
+This automatically downloads and integrates decoders from the [Milesight SensorDecoders repository](https://github.com/Milesight-IoT/SensorDecoders).
+
+### Step 5: Add IoT Devices
+
+Configure your Milesight sensors:
+
+```bash
+# Add devices with OTAA configuration
+python chirpstack_cli.py add-devices
+
+# Check device status
+python chirpstack_cli.py list-devices
+```
+
+### Step 6: Activate Your Sensors
+
+1. **Power on your Milesight sensors** (WS202, WS203, etc.)
+2. **Automatic OTAA Join**: Devices will automatically join using:
+   - **App EUI**: `24E124C0002A0001` (same for all Milesight devices)
+   - **App Key**: `5572404c696e6b4c6f52613230313823` (same for all Milesight devices)
+   - **Device EUI**: Unique per device (printed on device label)
+
+3. **Monitor in ChirpStack**: Check **Applications** → **Milesight IoT Sensors** → **Devices**
+
+## 🛠️ CLI Tools Reference
+
+### ChirpStack CLI (`chirpstack_cli.py`)
+
+Complete command-line interface for ChirpStack management:
+
+```bash
+# Authentication & Testing
+python chirpstack_cli.py check-auth
+
+# Gateway Management  
+python chirpstack_cli.py list-gateways
+python chirpstack_cli.py add-gateway --id "..." --name "..."
+python chirpstack_cli.py add-gateways --file gateways.json
+
+# Device Profile Management
+python chirpstack_cli.py list-profiles
+python chirpstack_cli.py add-profiles --file device_profiles.json
+
+# Application Management
+python chirpstack_cli.py list-applications
+
+# Device Management
+python chirpstack_cli.py list-devices
+python chirpstack_cli.py add-devices --file devices.json
+
+# Get help for any command
+python chirpstack_cli.py [command] --help
+```
+
+### Configuration Scripts
+
+- **`configure_chirpstack.py`**: Simple all-in-one configuration script
+- **`chirpstack_configurator.py`**: Advanced configuration with detailed logging
+- **`demo.py`**: Interactive step-by-step setup guide
+
+### IoT Dashboard (`iot_client.py`)
+
+Real-time monitoring dashboard for your IoT devices:
+
+```bash
+# Start the live dashboard
+python iot_client.py
+```
+
+Features:
+- 📊 Live sensor data display
+- 📡 Gateway status monitoring  
+- 🔋 Battery level tracking
+- 📶 Signal quality indicators
+- 🎨 Beautiful terminal UI with Rich
+
+## 📁 Configuration Files
+
+### Device Profiles (`device_profiles.json`)
+
+Pre-configured profiles for Milesight sensors:
+
+- **WS202-868M**: PIR motion and light sensor
+- **WS203-868M**: Temperature and humidity sensor
+
+Each profile includes:
+- LoRaWAN 1.0.3 configuration for IN865 region
+- Automatic codec download from GitHub
+- Proper measurement definitions
+- OTAA activation settings
+
+### Devices (`devices.json`)
+
+Device configurations with OTAA settings:
+
+```json
+{
+  "name": "PIR and Light",
+  "dev_eui": "24e124538f256619",
+  "device_profile_name": "WS202-868M",
+  "application_name": "Milesight IoT Sensors",
+  "join_eui": "24e124c0002a0001",
+  "app_key": "5572404c696e6b4c6f52613230313823"
+}
+```
+
+### Gateways (`gateways.json`)
+
+Gateway definitions with location data:
+
+```json
+{
+  "gateway_id": "0016c001f15f5e6d",
+  "name": "Main Building Gateway", 
+  "description": "Primary LoRaWAN gateway",
+  "latitude": 28.6139,
+  "longitude": 77.2090,
+  "altitude": 10.0
+}
+```
+
+## 🔧 Directory Structure
+
+```
+chirpstack-docker/
+├── docker-compose.yml              # ChirpStack services
+├── configuration/                  # ChirpStack configuration files
+│   ├── chirpstack/                # Server configuration
+│   ├── chirpstack-gateway-bridge/ # Gateway bridge config
+│   ├── mosquitto/                 # MQTT broker config
+│   └── postgresql/                # Database initialization
+├── chirpstack_cli.py              # Main CLI tool
+├── chirpstack_configurator.py     # Configuration library
+├── configure_chirpstack.py        # Simple setup script
+├── iot_client.py                  # Live dashboard
+├── demo.py                        # Interactive setup guide
+├── device_profiles.json           # Milesight device profiles
+├── devices.json                   # Device configurations
+├── gateways.json                  # Gateway definitions
+├── config.json                    # Dashboard configuration
+├── CLI_USAGE.md                   # Detailed CLI documentation
+├── CHIRPSTACK_CONFIG.md           # Configuration guide
+└── README.md                      # This file
+```
+
+## 🌐 Regional Configuration
+
+This setup is pre-configured for **IN865** (India) region. To use other regions:
+
+1. **Update device profiles**: Change `"region": "IN865"` to your region
+2. **Modify gateway bridge**: Update MQTT topic prefixes in `docker-compose.yml`
+3. **Check frequency plan**: Ensure your gateway supports the region
+
+Supported regions: `EU868`, `US915`, `AU915`, `AS923`, `IN865`, `KR920`, `RU864`
+
+## 📡 MQTT Integration
+
+Connect to the MQTT broker to receive real-time sensor data:
+
+```bash
+# MQTT broker details
+Host: localhost
+Port: 1883
+Topic: application/{application_id}/device/{device_eui}/event/up
+
+# Example mosquitto subscription
+mosquitto_sub -h localhost -p 1883 -t "application/+/device/+/event/up"
+```
+
+## 🔍 Supported Milesight Devices
+
+| Device | Model | Sensors | Profile |
+|--------|-------|---------|---------|
+| WS202 | PIR & Light | Motion, Light Level, Battery | WS202-868M |
+| WS203 | Temp & Humidity | Temperature, Humidity, Occupancy, Battery | WS203-868M |
+
+Device decoders are automatically downloaded from the [official Milesight repository](https://github.com/Milesight-IoT/SensorDecoders).
+
+## 🐛 Troubleshooting
+
+### Gateway Connection Issues
+
+```bash
+# Check if gateway is sending data
+docker-compose logs chirpstack-gateway-bridge
+
+# Verify gateway configuration
+python chirpstack_cli.py list-gateways
+```
+
+### Device Join Issues
+
+```bash
+# Check device configuration
+python chirpstack_cli.py list-devices
+
+# Verify device profile exists
+python chirpstack_cli.py list-profiles
+
+# Check ChirpStack logs
+docker-compose logs chirpstack
+```
+
+### Authentication Problems
+
+```bash
+# Test API connectivity
+python chirpstack_cli.py check-auth
+
+# Regenerate API key in ChirpStack web UI if needed
+```
+
+### MQTT Connection Issues
+
+```bash
+# Check MQTT broker status  
+docker-compose logs mosquitto
+
+# Test MQTT connection
+mosquitto_sub -h localhost -p 1883 -t "application/+/device/+/event/up"
+```
+
+## 📚 Additional Resources
+
+- **[CLI Usage Guide](CLI_USAGE.md)**: Detailed CLI documentation
+- **[Configuration Guide](CHIRPSTACK_CONFIG.md)**: Advanced configuration options
+- **[ChirpStack Documentation](https://www.chirpstack.io/docs/)**: Official ChirpStack docs
+- **[Milesight Documentation](https://www.milesight-iot.com/)**: Device manuals and specs
+- **[LoRaWAN Specification](https://lora-alliance.org/)**: LoRaWAN technical details
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the GPL-3.0 License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## 🆘 Support
+
+- **Issues**: Use GitHub Issues for bug reports and feature requests
+- **Discussions**: Use GitHub Discussions for questions and community support
+- **ChirpStack**: Check [ChirpStack Community](https://forum.chirpstack.io/)
+- **Milesight**: Contact [Milesight Support](https://www.milesight-iot.com/support/)
+
+---
+
+Made with ❤️ for the LoRaWAN and IoT community
