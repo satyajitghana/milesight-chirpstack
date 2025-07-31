@@ -1,0 +1,28 @@
+[
+	{
+		"gateway_id": "0016c001f15f5e6d",
+		"name": "Main Building Gateway",
+		"description": "Primary gateway for the main building - LoRaWAN concentrator",
+		"latitude": 28.6139,
+		"longitude": 77.2090,
+		"altitude": 10.0,
+		"tags": {
+			"location": "Main Building",
+			"floor": "Roof",
+			"installation_date": "2025-01-01"
+		}
+	},
+	{
+		"gateway_id": "0016c001f15f5e6e",
+		"name": "Secondary Building Gateway",
+		"description": "Secondary gateway for extended coverage - Backup concentrator",
+		"latitude": 28.6140,
+		"longitude": 77.2095,
+		"altitude": 15.0,
+		"tags": {
+			"location": "Secondary Building",
+			"floor": "Roof",
+			"installation_date": "2025-01-01"
+		}
+	}
+]

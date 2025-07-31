@@ -1,0 +1,87 @@
+{
+	"mqtt": {
+		"broker_host": "localhost",
+		"broker_port": 1883,
+		"username": null,
+		"password": null,
+		"keepalive": 60
+	},
+	"chirpstack": {
+		"application_id": "c93caa52-d596-4956-a05b-c5f5cd3bad53",
+		"application_name": "inkers office app"
+	},
+	"gateways": [
+		{
+			"id": "24e124fffefd3d66",
+			"name": "Main Gateway",
+			"location": "beast2.local",
+			"description": "Primary LoRaWAN Gateway"
+		}
+	],
+	"devices": [
+		{
+			"dev_eui": "24e124538f256619",
+			"name": "PIR and Light",
+			"type": "WS202-868M",
+			"location": "Office Area",
+			"sensors": [
+				{
+					"key": "pir",
+					"name": "Motion Sensor",
+					"unit": "state",
+					"icon": "🚶"
+				},
+				{
+					"key": "daylight",
+					"name": "Light Level",
+					"unit": "state",
+					"icon": "💡"
+				},
+				{
+					"key": "battery",
+					"name": "Battery",
+					"unit": "%",
+					"icon": "🔋"
+				}
+			]
+		},
+		{
+			"dev_eui": "24e124791f178752",
+			"name": "Temperature and Humidity",
+			"type": "WS203-868M",
+			"location": "Server Room",
+			"sensors": [
+				{
+					"key": "temperature",
+					"name": "Temperature",
+					"unit": "°C",
+					"icon": "🌡️"
+				},
+				{
+					"key": "humidity",
+					"name": "Humidity",
+					"unit": "%",
+					"icon": "💧"
+				},
+				{
+					"key": "occupancy",
+					"name": "Occupancy",
+					"unit": "state",
+					"icon": "👤"
+				},
+				{
+					"key": "battery",
+					"name": "Battery",
+					"unit": "%",
+					"icon": "🔋"
+				}
+			]
+		}
+	],
+	"dashboard": {
+		"title": "ChirpStack IoT Dashboard",
+		"refresh_rate": 2,
+		"active_threshold_seconds": 120,
+		"recent_threshold_seconds": 600
+	}
+}
