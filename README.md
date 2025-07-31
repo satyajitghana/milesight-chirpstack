@@ -40,10 +40,13 @@ Access ChirpStack web UI at: **http://localhost:8080**
 ### 2. Configure Your Environment
 
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
-# or using Poetry
-poetry install
+# Install uv (modern Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Set up Python environment
+uv venv
+source .venv/bin/activate
+uv sync
 
 # Set your API key (get from ChirpStack web UI)
 export CHIRPSTACK_API_KEY="your_api_key_here"
@@ -53,6 +56,9 @@ export CHIRPSTACK_SERVER="localhost:8080"
 ### 3. Run the Configuration Demo
 
 ```bash
+# Make sure virtual environment is activated
+source .venv/bin/activate
+
 # Interactive step-by-step setup guide
 python demo.py
 
@@ -340,6 +346,19 @@ docker-compose logs chirpstack
 python chirpstack_cli.py check-auth
 
 # Regenerate API key in ChirpStack web UI if needed
+```
+
+### Python Environment Issues
+
+```bash
+# If commands fail, ensure virtual environment is activated
+source .venv/bin/activate
+
+# Reinstall dependencies if needed
+uv sync
+
+# Check if uv is installed
+uv --version
 ```
 
 ### MQTT Connection Issues
