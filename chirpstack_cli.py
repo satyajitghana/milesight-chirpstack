@@ -19,6 +19,7 @@ Commands:
     list-devices        List all devices
     add-devices         Add devices from config.json or JSON file
     list-applications   List all applications
+    switch-control      Interactive CLI switch control interface for WS502 devices
 
 Author: AI Assistant
 Date: 2025
@@ -36,9 +37,17 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt, Confirm
+from rich.layout import Layout
+from rich.live import Live
+from rich.text import Text
+from rich.align import Align
 import requests
 from chirpstack_api import api
 from chirpstack_api.common import common_pb2 as common
+import threading
+import time
+import paho.mqtt.client as mqtt
+import json
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="ChirpStack CLI Tool for managing gateways, device profiles, and devices")
@@ -1162,6 +1171,345 @@ def _send_switch_command(dev_eui, action, switch_type):
     except Exception as e:
         console.print(f"❌ [red]Failed to send command to {dev_eui}: {e}[/red]")
         raise e
+
+@app.command()
+def switch_control():
+    """Interactive CLI switch control interface for WS502 devices with real-time status"""
+    console.print("🎛️  [bold blue]Interactive Switch Control Interface[/bold blue]")
+    console.print("🔌 [cyan]Loading WS502 smart switches...[/cyan]")
+    
+    try:
+        config = load_config()
+        devices = config.get('devices', [])
+        
+        # Filter for WS502 devices
+        ws502_devices = []
+        for device in devices:
+            if ('WS502' in device.get('name', '') or 
+                'WS502' in device.get('description', '') or
+                any('WS502' in str(v) for v in device.get('tags', {}).values())):
+                # Initialize device with unknown switch states
+                device['switch_1_status'] = 'Unknown'
+                device['switch_2_status'] = 'Unknown'
+                device['last_update'] = 'Never'
+                ws502_devices.append(device)
+        
+        if not ws502_devices:
+            console.print("⚠️  [yellow]No WS502 smart switches found in configuration[/yellow]")
+            return
+        
+        console.print(f"Found {len(ws502_devices)} smart switches")
+        
+        # Start interactive control loop with MQTT monitoring
+        _interactive_switch_control_with_mqtt(ws502_devices, config)
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to load switch control interface: {e}[/red]")
+        raise typer.Exit(1)
+
+def _interactive_switch_control_with_mqtt(devices, config):
+    """Interactive switch control with MQTT status monitoring"""
+    
+    # Global state for device status updates
+    mqtt_connected = False
+    last_mqtt_update = "Never"
+    
+    def on_mqtt_connect(client, userdata, flags, rc, properties=None):
+        nonlocal mqtt_connected, last_mqtt_update
+        if rc == 0:
+            mqtt_connected = True
+            last_mqtt_update = time.strftime("%H:%M:%S")
+            # Subscribe to device uplink messages for all WS502 devices
+            app_id = config.get('chirpstack', {}).get('application_id')
+            if app_id:
+                topic = f"application/{app_id}/device/+/event/up"
+                client.subscribe(topic)
+                console.print(f"🔔 [cyan]Subscribed to: {topic}[/cyan]")
+        
+    def on_mqtt_message(client, userdata, msg):
+        nonlocal last_mqtt_update
+        try:
+            # Only process uplink messages
+            if "/event/up" not in msg.topic:
+                return
+                
+            payload = json.loads(msg.payload.decode())
+            device_info = payload.get('deviceInfo', {})
+            device_eui = device_info.get('devEui', '').lower()
+            device_name = device_info.get('deviceName', '')
+            decoded_data = payload.get('object', {})
+            
+            # Update device status if it's one of our WS502 devices and has switch data
+            for device in devices:
+                if device['dev_eui'].lower() == device_eui:
+                    updated = False
+                    if 'switch_1' in decoded_data:
+                        device['switch_1_status'] = decoded_data['switch_1'].title()
+                        updated = True
+                    if 'switch_2' in decoded_data:
+                        device['switch_2_status'] = decoded_data['switch_2'].title()
+                        updated = True
+                    
+                    if updated:
+                        device['last_update'] = time.strftime("%H:%M:%S")
+                        last_mqtt_update = time.strftime("%H:%M:%S")
+                        # Debug: Print status update
+                        console.print(f"🔄 [green]Status updated for {device_name}: S1={device.get('switch_1_status', '?')}, S2={device.get('switch_2_status', '?')}[/green]", end='\r')
+                    break
+        except Exception as e:
+            # Debug: show MQTT parsing errors
+            console.print(f"🔧 [dim]MQTT parse error: {e}[/dim]", end='\r')
+    
+    def create_switch_panel():
+        """Create the enhanced switch control panel with status"""
+        layout = Layout()
+        
+        # Split into header, devices, and footer
+        layout.split_column(
+            Layout(name="header", size=3),
+            Layout(name="devices"),
+            Layout(name="footer", size=8)
+        )
+        
+        # Header with MQTT status
+        mqtt_status = "🟢 Connected" if mqtt_connected else "🔴 Disconnected"
+        header_text = Text(f"🎛️  WS502 Smart Switch Control Panel - MQTT: {mqtt_status}", 
+                          style="bold magenta", justify="center")
+        layout["header"].update(Panel(header_text, style="bold blue"))
+        
+        # Device controls with current status - clearer mapping
+        device_table = Table(title="🎛️  Switch Controls & Status (Device Commands Shown Clearly)", 
+                            show_header=True, header_style="bold cyan")
+        device_table.add_column("Device #", style="bold magenta", min_width=8)
+        device_table.add_column("Device Name", style="cyan", min_width=25)
+        device_table.add_column("Location", style="yellow", min_width=12)
+        device_table.add_column("Switch 1", style="white", min_width=18)
+        device_table.add_column("Switch 2", style="white", min_width=18)
+        device_table.add_column("All Switches", style="white", min_width=15)
+        device_table.add_column("Last Update", style="dim", min_width=10)
+        
+        for i, device in enumerate(devices):
+            device_num = i + 1
+            device_name = device['name']
+            location = device.get('tags', {}).get('zone', 'Unknown')
+            
+            # Format current status with colors
+            s1_status = device.get('switch_1_status', 'Unknown')
+            s2_status = device.get('switch_2_status', 'Unknown')
+            
+            if s1_status.lower() == 'on':
+                s1_status_display = f"[bold green]🟢 ON[/bold green]"
+            elif s1_status.lower() == 'off':
+                s1_status_display = f"[dim]⚪ OFF[/dim]"
+            else:
+                s1_status_display = f"[yellow]❓ {s1_status}[/yellow]"
+                
+            if s2_status.lower() == 'on':
+                s2_status_display = f"[bold green]🟢 ON[/bold green]"
+            elif s2_status.lower() == 'off':
+                s2_status_display = f"[dim]⚪ OFF[/dim]"
+            else:
+                s2_status_display = f"[yellow]❓ {s2_status}[/yellow]"
+            
+            # Create VERY clear command mapping
+            s1_commands = f"{s1_status_display}\n[bold green]a{device_num}[/bold green]=ON [bold red]b{device_num}[/bold red]=OFF"
+            s2_commands = f"{s2_status_display}\n[bold green]c{device_num}[/bold green]=ON [bold red]d{device_num}[/bold red]=OFF"
+            all_commands = f"[bold green]on{device_num}[/bold green]=ALL ON\n[bold red]off{device_num}[/bold red]=ALL OFF"
+            
+            device_table.add_row(
+                f"[bold magenta]#{device_num}[/bold magenta]",
+                device_name,
+                location,
+                s1_commands,
+                s2_commands,
+                all_commands,
+                device.get('last_update', 'Never')
+            )
+        
+        layout["devices"].update(device_table)
+        
+        # Footer with instructions
+        footer_text = Text()
+        footer_text.append("📝 Quick Command Reference (case insensitive):\n", style="bold cyan")
+        footer_text.append("• Look at the table above - each switch shows its exact command next to the status\n", style="white")
+        footer_text.append("• Example: For Device #1, use 'a1' to turn Switch 1 ON, 'b1' to turn it OFF\n", style="green")
+        footer_text.append("• Example: For Device #2, use 'on2' to turn ALL switches ON, 'off2' to turn all OFF\n", style="green")
+        footer_text.append("• General: 'h'=help, 'r'=refresh, 'q'=quit\n", style="white")
+        footer_text.append(f"• MQTT Status: {mqtt_status} | Last Update: {last_mqtt_update}\n", style="cyan")
+        footer_text.append("• Status updates automatically when devices report their state", style="green")
+        
+        layout["footer"].update(Panel(footer_text, title="Control Instructions", border_style="green"))
+        
+        return layout
+    
+    # Setup MQTT client for status monitoring
+    mqtt_client = None
+    try:
+        mqtt_config = config.get('mqtt', {})
+        if mqtt_config:
+            # Use the new callback API version to avoid deprecation warning
+            mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+            mqtt_client.on_connect = on_mqtt_connect
+            mqtt_client.on_message = on_mqtt_message
+            
+            if mqtt_config.get('username') and mqtt_config.get('password'):
+                mqtt_client.username_pw_set(mqtt_config['username'], mqtt_config['password'])
+            
+            console.print(f"🔌 [cyan]Connecting to MQTT broker: {mqtt_config.get('broker_host', 'localhost')}:{mqtt_config.get('broker_port', 1883)}[/cyan]")
+            
+            # Connect in background
+            mqtt_client.connect_async(
+                mqtt_config.get('broker_host', 'localhost'),
+                mqtt_config.get('broker_port', 1883),
+                mqtt_config.get('keepalive', 60)
+            )
+            mqtt_client.loop_start()
+    except Exception as e:
+        console.print(f"⚠️  [yellow]MQTT setup failed: {e}. Status updates disabled.[/yellow]")
+    
+    # Start interactive loop
+    try:
+        console.print("\n🎮 [bold green]Starting Interactive Control with Live Status Updates...[/bold green]")
+        console.print("💡 [yellow]Tip: Use simple commands like 'a1' for switch 1 ON, 'b1' for switch 1 OFF[/yellow]")
+        
+        # Give MQTT a moment to connect
+        console.print("⏳ [cyan]Waiting for MQTT connection...[/cyan]")
+        time.sleep(2)
+        console.print()
+        
+        while True:
+            # Display current interface
+            layout = create_switch_panel()
+            console.print(layout)
+            
+            # Get user input
+            console.print("\n🎯 [cyan]Enter command (or 'h' for help, 'q' to quit):[/cyan]")
+            choice = Prompt.ask("Command").strip().lower()
+            
+            if choice in ['q', 'quit', 'exit']:
+                console.print("👋 [yellow]Goodbye![/yellow]")
+                break
+            elif choice in ['h', 'help']:
+                _show_enhanced_help(devices)
+                continue
+            elif choice in ['r', 'refresh']:
+                console.clear()
+                continue
+            
+            # Process control commands with new simplified system
+            try:
+                success = _process_switch_command(choice, devices)
+                if not success:
+                    console.print(f"❌ [red]Invalid command: {choice}. Type 'h' for help.[/red]")
+                    
+            except Exception as e:
+                console.print(f"❌ [red]Error processing command: {e}[/red]")
+            
+            # Brief pause before next iteration
+            time.sleep(0.5)
+            console.print("\n" + "="*100 + "\n")
+    
+    except KeyboardInterrupt:
+        console.print("\n🛑 [yellow]Control interface interrupted[/yellow]")
+    except Exception as e:
+        console.print(f"❌ [red]Error in control interface: {e}[/red]")
+    finally:
+        if mqtt_client:
+            mqtt_client.loop_stop()
+            mqtt_client.disconnect()
+
+def _process_switch_command(command, devices):
+    """Process switch control commands with new simplified system"""
+    try:
+        # Parse device number from command
+        device_num = None
+        
+        # Extract device number from end of command
+        if command[-1].isdigit():
+            device_num = int(command[-1])
+            command_prefix = command[:-1]
+        else:
+            return False
+        
+        # Check if device number is valid
+        if device_num < 1 or device_num > len(devices):
+            console.print(f"❌ [red]Invalid device number: {device_num}. Valid range: 1-{len(devices)}[/red]")
+            return False
+            
+        device = devices[device_num - 1]
+        device_name = device['name']
+        dev_eui = device['dev_eui']
+        
+        # Process command
+        if command_prefix == 'a':  # Switch 1 ON
+            _send_switch_command(dev_eui, "on", "switch_1")
+            console.print(f"✅ [green]Switch 1 ON sent to {device_name}[/green]")
+            return True
+        elif command_prefix == 'b':  # Switch 1 OFF
+            _send_switch_command(dev_eui, "off", "switch_1")
+            console.print(f"🔴 [red]Switch 1 OFF sent to {device_name}[/red]")
+            return True
+        elif command_prefix == 'c':  # Switch 2 ON
+            _send_switch_command(dev_eui, "on", "switch_2")
+            console.print(f"✅ [green]Switch 2 ON sent to {device_name}[/green]")
+            return True
+        elif command_prefix == 'd':  # Switch 2 OFF
+            _send_switch_command(dev_eui, "off", "switch_2")
+            console.print(f"🔴 [red]Switch 2 OFF sent to {device_name}[/red]")
+            return True
+        elif command_prefix == 'on':  # All ON
+            _send_switch_command(dev_eui, "on", "switch_1")
+            _send_switch_command(dev_eui, "on", "switch_2")
+            console.print(f"✅ [bold green]ALL switches ON sent to {device_name}[/bold green]")
+            return True
+        elif command_prefix == 'off':  # All OFF
+            _send_switch_command(dev_eui, "off", "switch_1")
+            _send_switch_command(dev_eui, "off", "switch_2")
+            console.print(f"🔴 [bold red]ALL switches OFF sent to {device_name}[/bold red]")
+            return True
+        
+        return False
+        
+    except Exception as e:
+        console.print(f"❌ [red]Error processing command: {e}[/red]")
+        return False
+
+def _show_enhanced_help(devices):
+    """Show detailed help for enhanced switch control"""
+    console.print("\n" + "="*100)
+    console.print("📚 [bold blue]Enhanced Switch Control Help[/bold blue]\n")
+    
+    console.print("🎯 [cyan]Command Format:[/cyan]")
+    console.print("   • Commands are simple: [letter][device_number]")
+    console.print("   • Example: 'a1' = Turn ON Switch 1 on Device 1")
+    console.print("   • Commands are case insensitive\n")
+    
+    console.print("🎯 [cyan]Individual Switch Control:[/cyan]")
+    for i, device in enumerate(devices):
+        device_num = i + 1
+        console.print(f"   Device {device_num}: [green]{device['name']}[/green]")
+        console.print(f"   • Switch 1: [bold green]a{device_num}[/bold green] = ON, [bold red]b{device_num}[/bold red] = OFF")
+        console.print(f"   • Switch 2: [bold green]c{device_num}[/bold green] = ON, [bold red]d{device_num}[/bold red] = OFF")
+        console.print()
+    
+    console.print("🎯 [cyan]Device-wide Control (Both Switches):[/cyan]")
+    for i, device in enumerate(devices):
+        device_num = i + 1
+        console.print(f"   {device['name']}: [bold green]on{device_num}[/bold green] = ALL ON, [bold red]off{device_num}[/bold red] = ALL OFF")
+    
+    console.print("\n🎯 [cyan]General Commands:[/cyan]")
+    console.print("   • 'h' or 'help' - Show this help")
+    console.print("   • 'r' or 'refresh' - Refresh the interface")
+    console.print("   • 'q' or 'quit' - Exit the interface")
+    
+    console.print("\n🎯 [cyan]Status Information:[/cyan]")
+    console.print("   • Switch status updates automatically via MQTT")
+    console.print("   • 🟢 ON = Switch is currently on")
+    console.print("   • ⚪ OFF = Switch is currently off")
+    console.print("   • ❓ Unknown = Status not yet received")
+    
+    console.print("\n" + "="*100)
+    input("Press Enter to continue...")
 
 @app.command()
 def add_devices(
