@@ -68,6 +68,23 @@ services:
     volumes:
       - redisdata:/data
 
+  mosquitto-passwd:
+    image: eclipse-mosquitto:2
+    restart: "no"
+    volumes: 
+      - ./configuration/mosquitto/config/:/mosquitto/config/
+    command: >
+      sh -c "
+      if [ ! -f /mosquitto/config/passwd ]; then
+        echo 'Creating MQTT password file...';
+        mosquitto_passwd -c -b /mosquitto/config/passwd chirpstack chirpstack123;
+        mosquitto_passwd -b /mosquitto/config/passwd iotclient iotclient123;
+        echo 'MQTT users created: chirpstack/chirpstack123 and iotclient/iotclient123';
+      else
+        echo 'MQTT password file already exists.';
+      fi
+      "
+
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
@@ -75,7 +92,25 @@ services:
       - "1883:1883"
     volumes: 
       - ./configuration/mosquitto/config/:/mosquitto/config/
+    depends_on:
+      mosquitto-passwd:
+        condition: service_completed_successfully
+
+  # caddy:
+  #   image: caddy:2-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:80"
+  #     - "8443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - chirpstack
 
 volumes:
   postgresqldata:
   redisdata:
+  # caddy_data:
+  # caddy_config:

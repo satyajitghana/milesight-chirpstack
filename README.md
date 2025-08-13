@@ -48,8 +48,11 @@ uv venv
 source .venv/bin/activate
 uv sync
 
-# Set your API key (get from ChirpStack web UI)
-export CHIRPSTACK_API_KEY="your_api_key_here"
+# Create API Key in ChirpStack Web UI first:
+# 1. Open http://localhost:8080 (admin/admin)
+# 2. Go to Tenants → ChirpStack → API Keys
+# 3. Create new admin API key and copy the JWT token
+export CHIRPSTACK_API_KEY="your_jwt_token_here"
 export CHIRPSTACK_SERVER="localhost:8080"
 ```
 
@@ -81,10 +84,13 @@ python chirpstack_cli.py add-devices
 2. **Access Web UI**: Open http://localhost:8080 
    - Default login: `admin` / `admin`
 
-3. **Create API Key**: 
-   - Go to **Tenants** → **Default** → **API Keys**
-   - Create new key with full permissions
-   - Copy the JWT token for CLI usage
+3. **Create API Key** (Required for CLI tools): 
+   - Go to **Tenants** → **ChirpStack** → **API Keys**
+   - Click **Add API Key**
+   - Name: `CLI Access Key`
+   - Check **Is admin** for full permissions
+   - Click **Submit** and copy the JWT token
+   - Set environment variable: `export CHIRPSTACK_API_KEY="your_jwt_token_here"`
 
 ### Step 2: Milesight Gateway Configuration (UG63)
 
@@ -102,6 +108,8 @@ python chirpstack_cli.py add-devices
 3. **Network Settings**:
    - **Frequency Plan**: Select your region (e.g., IN865 for India)
    - **Gateway EUI**: Note this for ChirpStack registration
+
+**Note**: ChirpStack will automatically connect to the MQTT broker using the `chirpstack/chirpstack123` credentials configured in the system.
 
 ### Step 3: Register Gateway in ChirpStack
 
@@ -293,20 +301,37 @@ Supported regions: `EU868`, `US915`, `AU915`, `AS923`, `IN865`, `KR920`, `RU864`
 
 ## 📡 MQTT Integration
 
-Connect to the MQTT broker to receive real-time sensor data:
+Connect to the MQTT broker to receive real-time sensor data. **Authentication is required** for secure access:
 
+### MQTT Broker Details
 ```bash
-# MQTT broker details
 Host: localhost
 Port: 1883
+Username: iotclient
+Password: iotclient123
 Topic: application/{application_id}/device/{device_eui}/event/up
-
-# Example mosquitto subscription
-mosquitto_sub -h localhost -p 1883 -t "application/+/device/+/event/up"
 ```
 
+### MQTT Users Created Automatically
+- **chirpstack** / **chirpstack123** - For ChirpStack internal communication
+- **iotclient** / **iotclient123** - For external client connections
+
+### Example Connections
+```bash
+# Subscribe to all device data with authentication
+mosquitto_sub -h localhost -p 1883 -u iotclient -P iotclient123 -t "application/+/device/+/event/up"
+
+# Subscribe to specific application (replace with your app ID)
+mosquitto_sub -h localhost -p 1883 -u iotclient -P iotclient123 -t "application/c93caa52-d596-4956-a05b-c5f5cd3bad53/#" -v
 ```
-mosquitto_sub -t "application/c93caa52-d596-4956-a05b-c5f5cd3bad53/#" -v 
+
+### Add Custom MQTT Users
+```bash
+# Access the mosquitto container to add more users
+docker-compose exec mosquitto mosquitto_passwd /mosquitto/config/passwd newuser
+
+# Restart mosquitto to apply changes
+docker-compose restart mosquitto
 ```
 
 ## 🔍 Supported Milesight Devices
@@ -371,8 +396,17 @@ uv --version
 # Check MQTT broker status  
 docker-compose logs mosquitto
 
-# Test MQTT connection
-mosquitto_sub -h localhost -p 1883 -t "application/+/device/+/event/up"
+# Check if password file was created
+ls -la configuration/mosquitto/config/passwd
+
+# Test MQTT connection with authentication
+mosquitto_sub -h localhost -p 1883 -u iotclient -P iotclient123 -t "application/+/device/+/event/up"
+
+# If authentication fails, recreate password file
+docker-compose stop mosquitto
+rm configuration/mosquitto/config/passwd
+docker-compose up mosquitto-passwd
+docker-compose up mosquitto
 ```
 
 ## 📚 Additional Resources

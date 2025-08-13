@@ -43,7 +43,8 @@ app = typer.Typer(help="ChirpStack CLI Tool for managing gateways, device profil
 console = Console()
 
 # Global configuration
-API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6IjIzMWFhZjYxLTA2NmEtNDZjZi04ZDYxLTcxY2UzM2E2NDIzOSIsInR5cCI6ImtleSJ9.-bZpgLUMjtZUq_Z8AT23Tzze-jPTHiiZfsSyzww7fXE"
+# API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImQ3NmYzMzVmLWY0ZGEtNGRmNi05ODAwLWQ3ODkzOGMxYjdlNyIsInR5cCI6ImtleSJ9.Dr6Qbw4Kfr6rkoQQflQ9a5Hv8Nsa4PednO_4M3B8p5A"
+API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImFhYjAwNjMzLTY1MTQtNDEzNy1hZmYwLWI1YTlmMjY1NTY1ZiIsInR5cCI6ImtleSJ9.zFnbjBbifzFybzkuifvZJ5Aa1hFBwpS_XY1I1QAKXEw"
 SERVER_URL = "localhost:8080"
 
 class ChirpStackCLI:
@@ -75,9 +76,11 @@ class ChirpStackCLI:
         """Get the default tenant ID"""
         try:
             req = api.ListTenantsRequest()
+            req.limit = 10  # Set a reasonable limit
+            req.offset = 0  # Start from the beginning
             resp = self.tenant_client.List(req, metadata=self.get_auth_metadata())
             
-            if resp.result:
+            if resp.result and len(resp.result) > 0:
                 return resp.result[0].id
             else:
                 console.print("❌ [red]No tenants found[/red]")

@@ -1,0 +1,7 @@
+:80 {
+    reverse_proxy chirpstack:8080
+}
+
+iot.inkers.ai {
+    reverse_proxy chirpstack:8080
+}
