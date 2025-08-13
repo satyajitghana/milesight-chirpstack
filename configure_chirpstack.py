@@ -6,10 +6,9 @@ Usage:
     python configure_chirpstack.py
 
 This script will configure ChirpStack with:
-- WS202 and WS203 device profiles
-- Milesight IoT Sensors application
-- PIR and Light sensor device
-- Temperature and Humidity sensor device
+- All device profiles from config.json (WS202, WS203, WS502, CT105)
+- Application and devices as defined in config.json
+- All sensor devices with proper OTAA configuration
 """
 
 import os
@@ -25,13 +24,9 @@ def main():
     console.print("🚀 [bold blue]ChirpStack Configurator[/bold blue]")
     console.print("📡 [cyan]Configuring ChirpStack with Milesight IoT devices...[/cyan]\n")
     
-    # Check if configuration files exist
-    if not os.path.exists("device_profiles.json"):
-        console.print("❌ [red]device_profiles.json not found![/red]")
-        sys.exit(1)
-    
-    if not os.path.exists("devices.json"):
-        console.print("❌ [red]devices.json not found![/red]")
+    # Check if configuration file exists
+    if not os.path.exists("config.json"):
+        console.print("❌ [red]config.json not found![/red]")
         sys.exit(1)
     
     # Configuration
@@ -50,7 +45,7 @@ def main():
         configurator = ChirpStackConfigurator(API_KEY, SERVER_URL)
         
         # Run configuration
-        success = configurator.configure_from_files()
+        success = configurator.configure_from_config()
         
         if success:
             console.print("\n🎉 [bold green]Configuration completed successfully![/bold green]")

@@ -8,7 +8,10 @@
 	},
 	"chirpstack": {
 		"application_id": "c93caa52-d596-4956-a05b-c5f5cd3bad53",
-		"application_name": "inkers office app"
+		"application_name": "inkers office app",
+		"application_description": "Application for Milesight IoT devices",
+		"join_eui": "24e124c0002a0001",
+		"app_key": "5572404c696e6b4c6f52613230313823"
 	},
 	"gateways": [
 		{
@@ -18,12 +21,228 @@
 			"description": "Primary LoRaWAN Gateway"
 		}
 	],
+	"device_profiles": [
+		{
+			"name": "WS202-868M",
+			"description": "Milesight WS202 PIR and Light Sensor - Region: IN865",
+			"region": "IN865",
+			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
+			"regional_parameters_revision": "RP002_1_0_3",
+			"adr_algorithm_id": "default",
+			"payload_codec_runtime": "JS",
+			"codec_script_path": "ws202_decoder.js",
+			"flush_queue_on_activate": true,
+			"uplink_interval": 3600,
+			"device_status_req_interval": 0,
+			"supports_otaa": true,
+			"supports_class_b": false,
+			"supports_class_c": false,
+			"class_b_timeout": 0,
+			"class_b_ping_slot_period": 0,
+			"class_b_ping_slot_dr": 0,
+			"class_b_ping_slot_freq": 0,
+			"class_c_timeout": 0,
+			"abp_rx1_delay": 1,
+			"abp_rx1_dr_offset": 0,
+			"abp_rx2_dr": 0,
+			"abp_rx2_freq": 866550000,
+			"tags": {
+				"manufacturer": "Milesight",
+				"model": "WS202",
+				"sensor_type": "PIR_Light",
+				"frequency": "868M"
+			},
+			"measurements": {
+				"pir": {
+					"kind": "GAUGE",
+					"name": "Motion Detection"
+				},
+				"daylight": {
+					"kind": "GAUGE",
+					"name": "Light Level"
+				},
+				"battery": {
+					"kind": "GAUGE",
+					"name": "Battery Level"
+				}
+			}
+		},
+		{
+			"name": "WS203-868M",
+			"description": "Milesight WS203 Temperature and Humidity Sensor - Region: IN865",
+			"region": "IN865",
+			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
+			"regional_parameters_revision": "RP002_1_0_3",
+			"adr_algorithm_id": "default",
+			"payload_codec_runtime": "JS",
+			"codec_script_path": "ws203_decoder.js",
+			"flush_queue_on_activate": true,
+			"uplink_interval": 3600,
+			"device_status_req_interval": 0,
+			"supports_otaa": true,
+			"supports_class_b": false,
+			"supports_class_c": false,
+			"class_b_timeout": 0,
+			"class_b_ping_slot_period": 0,
+			"class_b_ping_slot_dr": 0,
+			"class_b_ping_slot_freq": 0,
+			"class_c_timeout": 0,
+			"abp_rx1_delay": 1,
+			"abp_rx1_dr_offset": 0,
+			"abp_rx2_dr": 0,
+			"abp_rx2_freq": 866550000,
+			"tags": {
+				"manufacturer": "Milesight",
+				"model": "WS203",
+				"sensor_type": "Temperature_Humidity",
+				"frequency": "868M"
+			},
+			"measurements": {
+				"temperature": {
+					"kind": "GAUGE",
+					"name": "Temperature"
+				},
+				"humidity": {
+					"kind": "GAUGE",
+					"name": "Humidity"
+				},
+				"occupancy": {
+					"kind": "GAUGE",
+					"name": "Occupancy"
+				},
+				"battery": {
+					"kind": "GAUGE",
+					"name": "Battery Level"
+				}
+			}
+		},
+		{
+			"name": "WS502-868M",
+			"description": "Milesight WS502 Smart Switch - Region: IN865",
+			"region": "IN865",
+			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
+			"regional_parameters_revision": "RP002_1_0_3",
+			"adr_algorithm_id": "default",
+			"payload_codec_runtime": "JS",
+			"codec_script_path": "ws502_codec.js",
+			"flush_queue_on_activate": true,
+			"uplink_interval": 3600,
+			"device_status_req_interval": 0,
+			"supports_otaa": true,
+			"supports_class_b": false,
+			"supports_class_c": true,
+			"class_b_timeout": 0,
+			"class_b_ping_slot_period": 0,
+			"class_b_ping_slot_dr": 0,
+			"class_b_ping_slot_freq": 0,
+			"class_c_timeout": 0,
+			"abp_rx1_delay": 1,
+			"abp_rx1_dr_offset": 0,
+			"abp_rx2_dr": 0,
+			"abp_rx2_freq": 866550000,
+			"tags": {
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"sensor_type": "Light_Switch",
+				"frequency": "868M"
+			},
+			"measurements": {
+				"voltage": {
+					"kind": "GAUGE",
+					"name": "Voltage"
+				},
+				"current": {
+					"kind": "GAUGE",
+					"name": "Current"
+				},
+				"active_power": {
+					"kind": "GAUGE",
+					"name": "Active Power"
+				},
+				"power_factor": {
+					"kind": "GAUGE",
+					"name": "Power Factor"
+				},
+				"power_consumption": {
+					"kind": "GAUGE",
+					"name": "Energy"
+				},
+				"switch_1": {
+					"kind": "GAUGE",
+					"name": "Switch 1"
+				},
+				"switch_2": {
+					"kind": "GAUGE",
+					"name": "Switch 2"
+				}
+			}
+		},
+		{
+			"name": "CT105-868M",
+			"description": "Milesight CT105 Current Transformer Sensor - Region: IN865",
+			"region": "IN865",
+			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
+			"regional_parameters_revision": "RP002_1_0_3",
+			"adr_algorithm_id": "default",
+			"payload_codec_runtime": "JS",
+			"codec_script_path": "ct10x_decoder.js",
+			"flush_queue_on_activate": true,
+			"uplink_interval": 3600,
+			"device_status_req_interval": 0,
+			"supports_otaa": true,
+			"supports_class_b": false,
+			"supports_class_c": false,
+			"class_b_timeout": 0,
+			"class_b_ping_slot_period": 0,
+			"class_b_ping_slot_dr": 0,
+			"class_b_ping_slot_freq": 0,
+			"class_c_timeout": 0,
+			"abp_rx1_delay": 1,
+			"abp_rx1_dr_offset": 0,
+			"abp_rx2_dr": 0,
+			"abp_rx2_freq": 866550000,
+			"tags": {
+				"manufacturer": "Milesight",
+				"model": "CT105",
+				"sensor_type": "Current_Sensor",
+				"frequency": "868M"
+			},
+			"measurements": {
+				"temperature": {
+					"kind": "GAUGE",
+					"name": "Temperature"
+				},
+				"current": {
+					"kind": "GAUGE",
+					"name": "Current"
+				},
+				"total_current": {
+					"kind": "GAUGE",
+					"name": "Total Current"
+				}
+			}
+		}
+	],
 	"devices": [
 		{
 			"dev_eui": "24e124538f256619",
-			"name": "PIR and Light",
-			"type": "WS202-868M",
-			"location": "Office Area",
+			"name": "CSO Cabin - PIR and Light",
+			"description": "WS202 PIR and Light Sensor",
+			"device_profile_name": "WS202-868M",
+			"location": "CSO Cabin",
+			"type": "PIR_Light_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "CSO Cabin",
+				"type": "PIR_Light_Sensor",
+				"manufacturer": "Milesight",
+				"model": "WS202",
+				"zone": "executive",
+				"function": "security_lighting",
+				"priority": "high"
+			},
 			"sensors": [
 				{
 					"key": "pir",
@@ -46,10 +265,132 @@
 			]
 		},
 		{
+			"dev_eui": "24e124771f064208",
+			"name": "CSO Cabin - Light Switch",
+			"description": "WS502 Smart Switch",
+			"device_profile_name": "WS502-868M",
+			"location": "CSO Cabin",
+			"type": "Smart_Switch",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "CSO Cabin",
+				"type": "Smart_Switch",
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"zone": "executive",
+				"function": "lighting_control",
+				"power_monitoring": "true",
+				"priority": "high"
+			},
+			"sensors": []
+		},
+		{
+			"dev_eui": "24e124771f064088",
+			"name": "Office Area 2 - Light Switch",
+			"description": "WS502 Smart Switch",
+			"device_profile_name": "WS502-868M",
+			"location": "Office Area 2",
+			"type": "Smart_Switch",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Office Area 2",
+				"type": "Smart_Switch",
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"zone": "workspace",
+				"function": "lighting_control",
+				"power_monitoring": "true"
+			},
+			"sensors": []
+		},
+		{
+			"dev_eui": "24e124771f063934",
+			"name": "Office Area 1 - Light Switch",
+			"description": "WS502 Smart Switch",
+			"device_profile_name": "WS502-868M",
+			"location": "Office Area 1",
+			"type": "Smart_Switch",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Office Area 1",
+				"type": "Smart_Switch",
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"zone": "workspace",
+				"function": "lighting_control",
+				"power_monitoring": "true"
+			},
+			"sensors": []
+		},
+		{
+			"dev_eui": "24e124746f214786",
+			"name": "Main Office Power - Smart Current Transformer",
+			"description": "CT105 Current Transformer Sensor",
+			"device_profile_name": "CT105-868M",
+			"location": "Main Office Power",
+			"type": "Current_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Main Office Power",
+				"type": "Current_Sensor",
+				"manufacturer": "Milesight",
+				"model": "CT105",
+				"zone": "infrastructure",
+				"function": "power_monitoring",
+				"critical": "true",
+				"priority": "critical"
+			},
+			"sensors": []
+		},
+		{
+			"dev_eui": "24e124771f063567",
+			"name": "CEO Cabin - Light Switch",
+			"description": "WS502 Smart Switch",
+			"device_profile_name": "WS502-868M",
+			"location": "CEO Cabin",
+			"type": "Smart_Switch",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "CEO Cabin",
+				"type": "Smart_Switch",
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"zone": "executive",
+				"function": "lighting_control",
+				"power_monitoring": "true",
+				"priority": "high"
+			},
+			"sensors": []
+		},
+		{
 			"dev_eui": "24e124791f178752",
-			"name": "Temperature and Humidity",
-			"type": "WS203-868M",
-			"location": "Server Room",
+			"name": "CEO Cabin - Temperature and Humidity",
+			"description": "WS203 Temperature and Humidity Sensor",
+			"device_profile_name": "WS203-868M",
+			"location": "CEO Cabin",
+			"type": "Temperature_Humidity_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "CEO Cabin",
+				"type": "Temperature_Humidity_Sensor",
+				"manufacturer": "Milesight",
+				"model": "WS203",
+				"zone": "executive",
+				"function": "environmental_monitoring",
+				"priority": "high"
+			},
 			"sensors": [
 				{
 					"key": "temperature",
@@ -76,10 +417,154 @@
 					"icon": "🔋"
 				}
 			]
+		},
+		{
+			"dev_eui": "24e124771f063819",
+			"name": "Conference Room - Light Switch",
+			"description": "WS502 Smart Switch",
+			"device_profile_name": "WS502-868M",
+			"location": "Conference Room",
+			"type": "Smart_Switch",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Conference Room",
+				"type": "Smart_Switch",
+				"manufacturer": "Milesight",
+				"model": "WS502",
+				"zone": "meeting",
+				"function": "lighting_control",
+				"power_monitoring": "true"
+			},
+			"sensors": []
+		},
+		{
+			"dev_eui": "24e124538f256662",
+			"name": "Conference Room - PIR and Light",
+			"description": "WS202 PIR and Light Sensor",
+			"device_profile_name": "WS202-868M",
+			"location": "Conference Room",
+			"type": "PIR_Light_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Conference Room",
+				"type": "PIR_Light_Sensor",
+				"manufacturer": "Milesight",
+				"model": "WS202",
+				"zone": "meeting",
+				"function": "security_lighting"
+			},
+			"sensors": [
+				{
+					"key": "pir",
+					"name": "Motion Sensor",
+					"unit": "state",
+					"icon": "🚶"
+				},
+				{
+					"key": "daylight",
+					"name": "Light Level",
+					"unit": "state",
+					"icon": "💡"
+				},
+				{
+					"key": "battery",
+					"name": "Battery",
+					"unit": "%",
+					"icon": "🔋"
+				}
+			]
+		},
+		{
+			"dev_eui": "24e124791f172509",
+			"name": "Office Area 2 - Temperature and Humidity",
+			"description": "WS203 Temperature and Humidity Sensor",
+			"device_profile_name": "WS203-868M",
+			"location": "Office Area 2",
+			"type": "Temperature_Humidity_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Office Area 2",
+				"type": "Temperature_Humidity_Sensor",
+				"manufacturer": "Milesight",
+				"model": "WS203",
+				"zone": "workspace",
+				"function": "environmental_monitoring"
+			},
+			"sensors": [
+				{
+					"key": "temperature",
+					"name": "Temperature",
+					"unit": "°C",
+					"icon": "🌡️"
+				},
+				{
+					"key": "humidity",
+					"name": "Humidity",
+					"unit": "%",
+					"icon": "💧"
+				},
+				{
+					"key": "occupancy",
+					"name": "Occupancy",
+					"unit": "state",
+					"icon": "👤"
+				},
+				{
+					"key": "battery",
+					"name": "Battery",
+					"unit": "%",
+					"icon": "🔋"
+				}
+			]
+		},
+		{
+			"dev_eui": "24e124538f256650",
+			"name": "Office Area 1 - PIR and Light",
+			"description": "WS202 PIR and Light Sensor",
+			"device_profile_name": "WS202-868M",
+			"location": "Office Area 1",
+			"type": "PIR_Light_Sensor",
+			"manufacturer": "Milesight",
+			"skip_fcnt_check": true,
+			"is_disabled": false,
+			"tags": {
+				"location": "Office Area 1",
+				"type": "PIR_Light_Sensor",
+				"manufacturer": "Milesight",
+				"model": "WS202",
+				"zone": "workspace",
+				"function": "security_lighting"
+			},
+			"sensors": [
+				{
+					"key": "pir",
+					"name": "Motion Sensor",
+					"unit": "state",
+					"icon": "🚶"
+				},
+				{
+					"key": "daylight",
+					"name": "Light Level",
+					"unit": "state",
+					"icon": "💡"
+				},
+				{
+					"key": "battery",
+					"name": "Battery",
+					"unit": "%",
+					"icon": "🔋"
+				}
+			]
 		}
 	],
 	"dashboard": {
-		"title": "ChirpStack IoT Dashboard",
+		"title": "Inkers Office IoT Dashboard",
 		"refresh_rate": 2,
 		"active_threshold_seconds": 120,
 		"recent_threshold_seconds": 600

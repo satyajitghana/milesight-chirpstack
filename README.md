@@ -305,6 +305,10 @@ Topic: application/{application_id}/device/{device_eui}/event/up
 mosquitto_sub -h localhost -p 1883 -t "application/+/device/+/event/up"
 ```
 
+```
+mosquitto_sub -t "application/c93caa52-d596-4956-a05b-c5f5cd3bad53/#" -v 
+```
+
 ## 🔍 Supported Milesight Devices
 
 | Device | Model | Sensors | Profile |

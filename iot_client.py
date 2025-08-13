@@ -1,6 +1,8 @@
 import paho.mqtt.client as mqtt
 import json
 import os
+import sys
+import argparse
 from datetime import datetime
 from rich.console import Console
 from rich.table import Table
@@ -18,51 +20,208 @@ console = Console()
 message_count = 0
 
 def load_config(config_file="config.json"):
-    """Load configuration from JSON file"""
+    """Load minimal configuration from JSON file (optional)"""
     global config
     
-    if not os.path.exists(config_file):
-        console.print(f"❌ [red]Configuration file '{config_file}' not found![/red]")
-        console.print(f"💡 [yellow]Please create a config.json file with your settings[/yellow]")
-        return False
+    # Set defaults for basic operation
+    config = {
+        "mqtt": {
+            "broker_host": "localhost",
+            "broker_port": 1883,
+            "username": None,
+            "password": None,
+            "keepalive": 60
+        },
+        "dashboard": {
+            "title": "ChirpStack IoT Dashboard",
+            "refresh_rate": 2,
+            "active_threshold_seconds": 120,
+            "recent_threshold_seconds": 600
+        }
+    }
     
-    try:
-        with open(config_file, 'r') as f:
-            config = json.load(f)
-        
-        console.print(f"✅ [green]Loaded configuration from '{config_file}'[/green]")
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                file_config = json.load(f)
+            
+            # Merge file config with defaults
+            config.update(file_config)
+            console.print(f"✅ [green]Loaded configuration from '{config_file}'[/green]")
+        except json.JSONDecodeError as e:
+            console.print(f"❌ [yellow]Invalid JSON in config file: {e}. Using defaults.[/yellow]")
+        except Exception as e:
+            console.print(f"❌ [yellow]Error loading config: {e}. Using defaults.[/yellow]")
+    else:
+        console.print(f"💡 [yellow]No config file found. Using defaults. MQTT broker: {config['mqtt']['broker_host']}[/yellow]")
+    
+    return True
+
+def device_matches_filters(device_data, filters):
+    """Check if device matches the current filters"""
+    if not filters:
         return True
-    except json.JSONDecodeError as e:
-        console.print(f"❌ [red]Invalid JSON in config file: {e}[/red]")
-        return False
-    except Exception as e:
-        console.print(f"❌ [red]Error loading config: {e}[/red]")
-        return False
-
-def get_device_config(dev_eui):
-    """Get device configuration by EUI"""
-    for device in config.get('devices', []):
-        if device['dev_eui'] == dev_eui:
-            return device
-    return None
-
-def format_sensor_value(key, value, device_config):
-    """Format sensor values using device configuration"""
-    if not device_config:
-        return f"{key}: {value}"
     
-    # Find sensor config
-    sensor_config = None
-    for sensor in device_config.get('sensors', []):
-        if sensor['key'].lower() == key.lower():
-            sensor_config = sensor
+    # Get device config for tag filtering
+    device_config = None
+    for device in config.get('devices', []):
+        if device['dev_eui'].lower() == device_data.get('dev_eui', '').lower():
+            device_config = device
             break
     
-    if not sensor_config:
-        return f"{key}: {value}"
+    if not device_config:
+        return True  # Show devices without config
     
-    icon = sensor_config.get('icon', '📊')
-    unit = sensor_config.get('unit', '')
+    tags = device_config.get('tags', {})
+    
+    # Check zone filter
+    if filters.get('zone') and tags.get('zone') != filters['zone']:
+        return False
+    
+    # Check function filter
+    if filters.get('function') and tags.get('function') != filters['function']:
+        return False
+    
+    # Check priority filter
+    if filters.get('priority') and tags.get('priority') != filters['priority']:
+        return False
+    
+    return True
+
+def format_ws502_data(decoded_data):
+    """Create a compact display for WS502 smart switch data"""
+    lines = []
+    
+    # Switch status line
+    switch_states = []
+    for i in [1, 2]:
+        switch_key = f'switch_{i}'
+        if switch_key in decoded_data:
+            state = decoded_data[switch_key]
+            if state.lower() == 'on':
+                switch_states.append(f"S{i}:[green]ON[/green]🟢")
+            else:
+                switch_states.append(f"S{i}:[dim]OFF[/dim]⚪")
+    
+    if switch_states:
+        lines.append(f"💡 {' | '.join(switch_states)}")
+    
+    # Electrical measurements line
+    electrical = []
+    voltage = decoded_data.get('voltage')
+    current = decoded_data.get('current')
+    power = decoded_data.get('active_power')
+    pf = decoded_data.get('power_factor')
+    
+    if isinstance(voltage, (int, float)):
+        if 220 <= voltage <= 250:
+            color = "green"
+        elif (200 <= voltage < 220) or (250 < voltage <= 260):
+            color = "yellow"
+        else:
+            color = "red"
+        electrical.append(f"⚡[{color}]{voltage}V[/{color}]")
+    
+    if isinstance(current, (int, float)):
+        if current < 10:
+            color = "green"
+        elif current <= 20:
+            color = "yellow"
+        else:
+            color = "red"
+        electrical.append(f"🔌[{color}]{current}A[/{color}]")
+    
+    if isinstance(power, (int, float)):
+        if power < 1000:
+            color = "green"
+        elif power <= 2000:
+            color = "yellow"
+        else:
+            color = "red"
+        electrical.append(f"🔆[{color}]{power}W[/{color}]")
+    
+    if isinstance(pf, (int, float)):
+        pf_percent = pf if pf > 2 else pf * 100
+        if pf_percent >= 95:
+            color = "green"
+        elif pf_percent >= 85:
+            color = "yellow"
+        else:
+            color = "red"
+        electrical.append(f"📐[{color}]{pf_percent:.0f}%[/{color}]")
+    
+    if electrical:
+        lines.append(" ".join(electrical))
+    
+    # Energy consumption
+    energy = decoded_data.get('power_consumption')
+    if isinstance(energy, (int, float)):
+        if energy >= 1000:
+            lines.append(f"🔋 {energy/1000:.1f}kWh")
+        else:
+            lines.append(f"🔋 {energy}Wh")
+    
+    # Change notifications
+    changes = []
+    for i in [1, 2]:
+        change_key = f'switch_{i}_change'
+        if decoded_data.get(change_key, '').lower() == 'yes':
+            changes.append(f"🔁[yellow]S{i}[/yellow]")
+    if changes:
+        lines.append(" ".join(changes))
+    
+    return "\n".join(lines) if lines else None
+
+def format_ct105_data(decoded_data):
+    """Create a compact display for CT105 current sensor data"""
+    lines = []
+    measurements = []
+    
+    current = decoded_data.get('current')
+    total_current = decoded_data.get('total_current')
+    temperature = decoded_data.get('temperature')
+    
+    if isinstance(current, (int, float)):
+        if current < 10:
+            color = "green"
+        elif current <= 20:
+            color = "yellow"
+        else:
+            color = "red"
+        measurements.append(f"🔌[{color}]{current}A[/{color}]")
+    
+    if isinstance(total_current, (int, float)):
+        measurements.append(f"∑[cyan]{total_current}A[/cyan]")
+    
+    if isinstance(temperature, (int, float)):
+        if temperature < 30:
+            color = "green"
+        elif temperature <= 50:
+            color = "yellow"
+        else:
+            color = "red"
+        measurements.append(f"🌡️[{color}]{temperature}°C[/{color}]")
+    
+    if measurements:
+        lines.append(" | ".join(measurements))
+    
+    return "\n".join(lines) if lines else None
+
+def format_sensor_value(key, value, device_profile=None):
+    """Format sensor values based on key and device profile"""
+    # Default icon mapping
+    icon_map = {
+        'battery': '🔋',
+        'temperature': '🌡️',
+        'humidity': '💧',
+        'pir': '🚶',
+        'motion': '🚶',
+        'occupancy': '👤',
+        'daylight': '💡',
+        'light': '💡'
+    }
+    
+    icon = icon_map.get(key.lower(), '📊')
     
     # Special formatting based on sensor type
     if key.lower() == 'battery' and isinstance(value, (int, float)):
@@ -87,12 +246,89 @@ def format_sensor_value(key, value, device_config):
             return f"🌙 Dim"
         else:
             return f"{icon} {value}"
+    # WS502 Smart Switch specific fields
+    elif key.lower() == 'voltage' and isinstance(value, (int, float)):
+        # Color code voltage: green (220-250V), yellow (200-220V or 250-260V), red (outside)
+        if 220 <= value <= 250:
+            color = "green"
+        elif (200 <= value < 220) or (250 < value <= 260):
+            color = "yellow"
+        else:
+            color = "red"
+        return f"⚡ [{color}]{value}V[/{color}]"
+    elif key.lower() == 'current' and isinstance(value, (int, float)):
+        # Color code current: green (<10A), yellow (10-20A), red (>20A)
+        if value < 10:
+            color = "green"
+        elif value <= 20:
+            color = "yellow"
+        else:
+            color = "red"
+        return f"🔌 [{color}]{value}A[/{color}]"
+    elif key.lower() == 'active_power' and isinstance(value, (int, float)):
+        # Color code power: green (<1000W), yellow (1000-2000W), red (>2000W)
+        if value < 1000:
+            color = "green"
+        elif value <= 2000:
+            color = "yellow"
+        else:
+            color = "red"
+        return f"🔆 [{color}]{value}W[/{color}]"
+    elif key.lower() == 'power_factor' and isinstance(value, (int, float)):
+        pf_percent = value if value > 2 else value * 100
+        # Color code power factor: green (>95%), yellow (85-95%), red (<85%)
+        if pf_percent >= 95:
+            color = "green"
+        elif pf_percent >= 85:
+            color = "yellow"
+        else:
+            color = "red"
+        return f"📐 PF:[{color}]{pf_percent:.0f}%[/{color}]"
+    elif key.lower() == 'power_consumption' and isinstance(value, (int, float)):
+        # Format energy consumption with units
+        if value >= 1000:
+            return f"🔋 {value/1000:.1f}kWh"
+        else:
+            return f"🔋 {value}Wh"
+    elif key.lower() in ['switch_1', 'switch_2'] and isinstance(value, str):
+        switch_num = key.split('_')[-1]
+        if value.lower() == 'on':
+            return f"💡 S{switch_num}:[green]ON[/green] 🟢"
+        else:
+            return f"💡 S{switch_num}:[dim]OFF[/dim] ⚪"
+    elif key.lower() in ['switch_1_change', 'switch_2_change'] and isinstance(value, str):
+        # Only show if 'yes'
+        if value.lower() == 'yes':
+            switch_num = key.split('_')[1]
+            return f"🔁 [yellow]S{switch_num} Changed[/yellow]"
+        return ""
+    # CT105 specific fields
+    elif key.lower() == 'total_current' and isinstance(value, (int, float)):
+        return f"∑ [cyan]{value}A[/cyan] (Total)"
+    elif key.lower() == 'temperature' and isinstance(value, (int, float)):
+        # Standard temperature formatting
+        if value < 0:
+            color = "blue"
+        elif value < 10:
+            color = "cyan"
+        elif value < 30:
+            color = "green"
+        elif value <= 50:
+            color = "yellow"
+        else:
+            color = "red"
+        return f"🌡️ [{color}]{value}°C[/{color}]"
+    elif key.lower() == 'humidity' and isinstance(value, (int, float)):
+        if value < 30:
+            color = "yellow"  # Too dry
+        elif value <= 60:
+            color = "green"   # Comfortable
+        else:
+            color = "blue"    # High humidity
+        return f"💧 [{color}]{value}%[/{color}]"
     else:
         # Standard formatting
-        if unit and unit != 'state':
-            return f"{icon} {value}{unit}"
-        else:
-            return f"{icon} {value}"
+        return f"{icon} {value}"
 
 def create_gateway_table():
     """Create a table showing gateway information"""
@@ -128,12 +364,12 @@ def create_devices_table():
     """Create a table showing all devices and their latest data"""
     table = Table(title="🌐 IoT Devices - Live Sensor Data", show_header=True, header_style="bold magenta")
     
-    table.add_column("Device", style="cyan", min_width=20)
+    table.add_column("Device", style="cyan", min_width=22)
     table.add_column("Status", style="green", min_width=8)
-    table.add_column("Sensor Data", style="white", min_width=30)
+    table.add_column("Sensor Data", style="white", min_width=35)
     table.add_column("Signal", style="orange1", min_width=15)
     table.add_column("Messages", style="blue", min_width=8)
-    table.add_column("Last Seen", style="dim", min_width=12)
+    table.add_column("Last Seen", style="dim", min_width=10)
     
     if not device_data:
         table.add_row("No devices", "Waiting for data...", "", "", "", "")
@@ -143,13 +379,45 @@ def create_devices_table():
     active_threshold = dashboard_config.get('active_threshold_seconds', 120)
     recent_threshold = dashboard_config.get('recent_threshold_seconds', 600)
     
+    # Apply filters
+    filters = config.get('filters', {})
+    filtered_devices = {}
     for dev_eui, data in device_data.items():
-        device_config = get_device_config(dev_eui)
+        if device_matches_filters({**data, 'dev_eui': dev_eui}, filters):
+            filtered_devices[dev_eui] = data
+    
+    for dev_eui, data in filtered_devices.items():
+        # Use device info from MQTT messages directly
+        device_name_str = data.get('device_name', 'Unknown Device')
+        device_profile = data.get('device_profile', 'Unknown Profile')
         
-        if device_config:
-            device_name = f"[bold]{device_config['name']}[/bold]\n[dim]{device_config['type']}[/dim]\n[dim]{device_config.get('location', 'Unknown')}[/dim]\n[dim]{dev_eui[-8:]}[/dim]"
-        else:
-            device_name = f"[bold]Unknown Device[/bold]\n[dim]{dev_eui[-8:]}[/dim]"
+        # Add tags if requested
+        display_name = f"[bold]{device_name_str}[/bold]\n[dim]{device_profile}[/dim]"
+        
+        if filters.get('show_tags'):
+            device_config = None
+            for device in config.get('devices', []):
+                if device['dev_eui'].lower() == dev_eui.lower():
+                    device_config = device
+                    break
+            
+            if device_config and device_config.get('tags'):
+                tags = device_config['tags']
+                zone = tags.get('zone', '')
+                function = tags.get('function', '')
+                priority = tags.get('priority', '')
+                tag_display = []
+                if zone:
+                    tag_display.append(f"🏢{zone}")
+                if function:
+                    tag_display.append(f"⚙️{function}")
+                if priority:
+                    tag_display.append(f"🔥{priority}")
+                
+                if tag_display:
+                    display_name += f"\n[dim cyan]{' | '.join(tag_display)}[/dim cyan]"
+        
+        device_name = f"{display_name}\n[dim]{dev_eui[-8:]}[/dim]"
         
         # Status indicator based on config thresholds
         time_diff = (datetime.now() - datetime.strptime(data.get('last_seen', '1970-01-01 00:00:00'), '%Y-%m-%d %H:%M:%S')).seconds
@@ -160,21 +428,37 @@ def create_devices_table():
         else:
             status = "🔴 Inactive"
         
-        # Format sensor data using device config
-        sensor_data = []
-        if 'decoded_data' in data and data['decoded_data']:
-            for key, value in data['decoded_data'].items():
-                formatted_value = format_sensor_value(key, value, device_config)
-                sensor_data.append(formatted_value)
+        # Format sensor data with compact formatting for known device types
+        decoded_data = data.get('decoded_data', {})
         
-        data_str = "\n".join(sensor_data) if sensor_data else "No data"
+        # Use compact formatting for specific device types
+        if decoded_data:
+            if 'WS502' in device_profile:
+                data_str = format_ws502_data(decoded_data)
+                if not data_str:
+                    data_str = "No WS502 data"
+            elif 'CT105' in device_profile or 'CT10' in device_profile or 'current' in device_profile.lower():
+                data_str = format_ct105_data(decoded_data)
+                if not data_str:
+                    data_str = "No CT105 data"
+            else:
+                # Standard formatting for other devices
+                sensor_data = []
+                for key, value in decoded_data.items():
+                    formatted_value = format_sensor_value(key, value, device_profile)
+                    if formatted_value:
+                        sensor_data.append(formatted_value)
+                data_str = "\n".join(sensor_data) if sensor_data else "No data"
+        else:
+            data_str = "No data"
         
         # Signal quality
         rssi = data.get('rssi', 'N/A')
         snr = data.get('snr', 'N/A')
-        if rssi != 'N/A':
+        if isinstance(rssi, (int, float)):
             signal_quality = "🔴 Poor" if rssi < -80 else "🟡 Fair" if rssi < -60 else "🟢 Good"
-            signal_str = f"{signal_quality}\nRSSI: {rssi} dBm\nSNR: {snr} dB"
+            snr_str = f"{snr} dB" if isinstance(snr, (int, float)) else str(snr)
+            signal_str = f"{signal_quality}\nRSSI: {rssi} dBm\nSNR: {snr_str}"
         else:
             signal_str = "No signal data"
         
@@ -290,14 +574,17 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         console.print("✅ [bold green]Connected to ChirpStack MQTT broker![/bold green]")
         
-        # Build topic from config
+        # Try to get application ID from config, otherwise subscribe to all
         app_id = config.get('chirpstack', {}).get('application_id')
         if app_id:
             topic = f"application/{app_id}/#"
             client.subscribe(topic)
-            console.print(f"📡 [cyan]Subscribed to application events[/cyan]")
+            console.print(f"📡 [cyan]Subscribed to application events: {app_id}[/cyan]")
         else:
-            console.print("❌ [red]No application ID configured![/red]")
+            # Subscribe to all applications if no specific app ID
+            topic = "application/+/device/+/event/up"
+            client.subscribe(topic)
+            console.print(f"📡 [cyan]Subscribed to all application events[/cyan]")
     else:
         console.print(f"❌ [red]Connection failed with code {rc}[/red]")
 
@@ -311,6 +598,8 @@ def on_message(client, userdata, msg):
         # Extract device information
         device_info = payload.get('deviceInfo', {})
         device_eui = device_info.get('devEui', 'Unknown')
+        device_name = device_info.get('deviceName')
+        device_profile = device_info.get('deviceProfileName')
         
         # Update device data
         if device_eui not in device_data:
@@ -324,18 +613,71 @@ def on_message(client, userdata, msg):
             'snr': payload.get('rxInfo', [{}])[0].get('snr') if payload.get('rxInfo') else None,
             'gateway_id': payload.get('rxInfo', [{}])[0].get('gatewayId') if payload.get('rxInfo') else None,
             'frequency': payload.get('txInfo', {}).get('frequency'),
-            'spreading_factor': payload.get('txInfo', {}).get('modulation', {}).get('lora', {}).get('spreadingFactor')
+            'spreading_factor': payload.get('txInfo', {}).get('modulation', {}).get('lora', {}).get('spreadingFactor'),
+            'device_name': device_name,
+            'device_profile': device_profile
         })
         
     except Exception as e:
         console.print(f"❌ [red]Error processing message: {e}[/red]")
 
 def main():
-    console.print("🚀 [bold]Starting ChirpStack IoT Dashboard...[/bold]")
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='ChirpStack IoT Dashboard - Generic MQTT Reader')
+    parser.add_argument('--broker', '-b', default='localhost', help='MQTT broker host (default: localhost)')
+    parser.add_argument('--port', '-p', type=int, default=1883, help='MQTT broker port (default: 1883)')
+    parser.add_argument('--username', '-u', help='MQTT username')
+    parser.add_argument('--password', '-P', help='MQTT password')
+    parser.add_argument('--app-id', '-a', help='ChirpStack application ID (if omitted, listens to all)')
+    parser.add_argument('--config', '-c', default='config.json', help='Config file path (default: config.json)')
+    parser.add_argument('--zone', '-z', help='Filter devices by zone (e.g., executive, workspace, meeting)')
+    parser.add_argument('--function', '-f', help='Filter devices by function (e.g., lighting_control, power_monitoring)')
+    parser.add_argument('--priority', help='Filter devices by priority (e.g., high, critical)')
+    parser.add_argument('--show-tags', action='store_true', help='Show device tags in the display')
     
-    # Load configuration
-    if not load_config():
-        return
+    args = parser.parse_args()
+    
+    console.print("🚀 [bold]Starting ChirpStack IoT Dashboard...[/bold]")
+    console.print(f"📡 [cyan]Connecting to MQTT broker: {args.broker}:{args.port}[/cyan]")
+    
+    # Show active filters
+    active_filters = []
+    if args.zone:
+        active_filters.append(f"Zone: {args.zone}")
+    if args.function:
+        active_filters.append(f"Function: {args.function}")
+    if args.priority:
+        active_filters.append(f"Priority: {args.priority}")
+    if args.show_tags:
+        active_filters.append("Tags: ON")
+    
+    if active_filters:
+        console.print(f"🔍 [yellow]Active filters: {' | '.join(active_filters)}[/yellow]")
+    else:
+        console.print("🌐 [green]Showing all devices (no filters)[/green]")
+    
+    # Load configuration (optional) and override with command line args
+    load_config(args.config)
+    
+    # Override config with command line arguments
+    if args.broker != 'localhost':
+        config.setdefault('mqtt', {})['broker_host'] = args.broker
+    if args.port != 1883:
+        config.setdefault('mqtt', {})['broker_port'] = args.port
+    if args.username:
+        config.setdefault('mqtt', {})['username'] = args.username
+    if args.password:
+        config.setdefault('mqtt', {})['password'] = args.password
+    if args.app_id:
+        config.setdefault('chirpstack', {})['application_id'] = args.app_id
+    
+    # Store filter options
+    config['filters'] = {
+        'zone': args.zone,
+        'function': args.function,
+        'priority': args.priority,
+        'show_tags': args.show_tags
+    }
     
     # Get MQTT config
     mqtt_config = config.get('mqtt', {})

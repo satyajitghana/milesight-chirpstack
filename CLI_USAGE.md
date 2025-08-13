@@ -13,11 +13,13 @@ A powerful command-line interface for managing ChirpStack gateways, device profi
 ## 📋 Prerequisites
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install uv (modern Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Or using Poetry
-poetry install
+# Set up Python environment
+uv venv
+source .venv/bin/activate
+uv sync
 
 # Set environment variables (optional)
 export CHIRPSTACK_API_KEY="your-api-key-here"

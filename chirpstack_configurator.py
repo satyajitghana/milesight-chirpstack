@@ -4,9 +4,11 @@ ChirpStack Configurator Script
 
 This script configures ChirpStack with device profiles and devices using the gRPC API.
 It will:
-1. Create or update device profiles for WS202 and WS203 sensors
+1. Create or update device profiles for all sensor types (WS202, WS203, WS502, CT105)
 2. Create an application if it doesn't exist
 3. Add devices to the application with proper OTAA configuration
+
+The script uses a single consolidated config.json file as the source of truth.
 
 Author: AI Assistant
 Date: 2025
@@ -67,13 +69,24 @@ class ChirpStackConfigurator:
         return [("authorization", f"Bearer {self.api_key}")]
     
     def _download_codec_script(self, url):
-        """Download codec script from URL"""
+        """Download codec script from URL (fallback only)"""
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
             return response.text
         except Exception as e:
             console.print(f"❌ [red]Failed to download codec from {url}: {e}[/red]")
+            return ""
+
+    def _load_codec_from_path(self, path):
+        """Load codec script from a local file path"""
+        try:
+            # Support absolute or relative paths (relative to repo root / current CWD)
+            codec_path = path if os.path.isabs(path) else os.path.join(os.getcwd(), path)
+            with open(codec_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            console.print(f"❌ [red]Failed to read codec from path '{path}': {e}[/red]")
             return ""
     
     def get_tenant_id(self):
@@ -139,18 +152,20 @@ class ChirpStackConfigurator:
             
             # Check if profile already exists
             existing_id = self.device_profile_exists(profile_config['name'])
-            if existing_id:
-                console.print(f"✅ [yellow]Device profile '{profile_config['name']}' already exists (ID: {existing_id})[/yellow]")
-                return existing_id
             
-            # Download codec script if URL provided
+            # Load codec script from local path (preferred) or URL (fallback)
             codec_script = ""
-            if profile_config.get('codec_script_url'):
+            if profile_config.get('codec_script_path'):
+                console.print(f"📄 [cyan]Loading local codec for {profile_config['name']} from {profile_config['codec_script_path']}[/cyan]")
+                codec_script = self._load_codec_from_path(profile_config['codec_script_path'])
+            elif profile_config.get('codec_script_url'):
                 console.print(f"📥 [cyan]Downloading codec script for {profile_config['name']}...[/cyan]")
                 codec_script = self._download_codec_script(profile_config['codec_script_url'])
             
-            # Create device profile object
+            # Build device profile object (for create or update)
             device_profile = api.DeviceProfile()
+            if existing_id:
+                device_profile.id = existing_id
             device_profile.name = profile_config['name']
             device_profile.description = profile_config['description']
             device_profile.tenant_id = tenant_id
@@ -175,27 +190,32 @@ class ChirpStackConfigurator:
             device_profile.abp_rx1_dr_offset = profile_config['abp_rx1_dr_offset']
             device_profile.abp_rx2_dr = profile_config['abp_rx2_dr']
             device_profile.abp_rx2_freq = profile_config['abp_rx2_freq']
-            
+
             # Add tags
             for key, value in profile_config.get('tags', {}).items():
                 device_profile.tags[key] = value
-            
+
             # Add measurements
             for key, measurement in profile_config.get('measurements', {}).items():
                 measurement_obj = api.Measurement()
                 measurement_obj.kind = api.MeasurementKind.Value(measurement['kind'])
                 measurement_obj.name = measurement['name']
                 device_profile.measurements[key] = measurement_obj
-            
-            # Create the request
-            req = api.CreateDeviceProfileRequest()
-            req.device_profile.CopyFrom(device_profile)
-            
-            # Make the API call
-            resp = self.device_profile_client.Create(req, metadata=self._get_auth_metadata())
-            
-            console.print(f"✅ [green]Device profile '{profile_config['name']}' created successfully (ID: {resp.id})[/green]")
-            return resp.id
+
+            if existing_id:
+                # Update existing device profile
+                req = api.UpdateDeviceProfileRequest()
+                req.device_profile.CopyFrom(device_profile)
+                self.device_profile_client.Update(req, metadata=self._get_auth_metadata())
+                console.print(f"🔄 [green]Device profile '{profile_config['name']}' updated (ID: {existing_id})[/green]")
+                return existing_id
+            else:
+                # Create the request
+                req = api.CreateDeviceProfileRequest()
+                req.device_profile.CopyFrom(device_profile)
+                resp = self.device_profile_client.Create(req, metadata=self._get_auth_metadata())
+                console.print(f"✅ [green]Device profile '{profile_config['name']}' created successfully (ID: {resp.id})[/green]")
+                return resp.id
             
         except Exception as e:
             console.print(f"❌ [red]Failed to create device profile '{profile_config['name']}': {e}[/red]")
@@ -345,26 +365,24 @@ class ChirpStackConfigurator:
         except Exception as e:
             console.print(f"❌ [red]Failed to create device keys for {dev_eui}: {e}[/red]")
     
-    def configure_from_files(self, device_profiles_file="device_profiles.json", devices_file="devices.json"):
-        """Configure ChirpStack from JSON configuration files"""
+    def configure_from_config(self, config_file="config.json"):
+        """Configure ChirpStack from consolidated config file"""
         console.print(Panel("🚀 ChirpStack Configuration Started", style="bold blue"))
         
-        # Load configuration files
+        # Load consolidated configuration
         try:
-            with open(device_profiles_file, 'r') as f:
-                device_profiles = json.load(f)
-            console.print(f"✅ [green]Loaded {len(device_profiles)} device profiles from {device_profiles_file}[/green]")
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            console.print(f"✅ [green]Loaded configuration from {config_file}[/green]")
         except Exception as e:
-            console.print(f"❌ [red]Failed to load device profiles: {e}[/red]")
+            console.print(f"❌ [red]Failed to load config: {e}[/red]")
             return False
         
-        try:
-            with open(devices_file, 'r') as f:
-                devices = json.load(f)
-            console.print(f"✅ [green]Loaded {len(devices)} devices from {devices_file}[/green]")
-        except Exception as e:
-            console.print(f"❌ [red]Failed to load devices: {e}[/red]")
-            return False
+        device_profiles = config.get('device_profiles', [])
+        devices = config.get('devices', [])
+        chirpstack_config = config.get('chirpstack', {})
+        
+        console.print(f"✅ [green]Found {len(device_profiles)} device profiles and {len(devices)} devices[/green]")
         
         # Step 1: Create device profiles
         console.print("\n📋 [bold cyan]Step 1: Creating Device Profiles[/bold cyan]")
@@ -383,17 +401,13 @@ class ChirpStackConfigurator:
         console.print("\n🏢 [bold cyan]Step 2: Creating Applications[/bold cyan]")
         application_ids = {}
         
-        # Get unique applications from devices
-        apps_to_create = {}
-        for device in devices:
-            app_name = device['application_name']
-            if app_name not in apps_to_create:
-                apps_to_create[app_name] = device['application_description']
+        # Create application from config
+        app_name = chirpstack_config.get('application_name', 'Default Application')
+        app_description = chirpstack_config.get('application_description', 'IoT Application')
         
-        for app_name, app_description in apps_to_create.items():
-            app_id = self.create_application(app_name, app_description)
-            if app_id:
-                application_ids[app_name] = app_id
+        app_id = self.create_application(app_name, app_description)
+        if app_id:
+            application_ids[app_name] = app_id
         
         # Step 3: Create devices
         console.print("\n📱 [bold cyan]Step 3: Creating Devices[/bold cyan]")
@@ -404,7 +418,7 @@ class ChirpStackConfigurator:
             for device in devices:
                 # Get required IDs
                 device_profile_id = profile_ids.get(device['device_profile_name'])
-                application_id = application_ids.get(device['application_name'])
+                application_id = application_ids.get(app_name)
                 
                 if not device_profile_id:
                     console.print(f"❌ [red]Device profile '{device['device_profile_name']}' not found for device '{device['name']}'[/red]")
@@ -412,12 +426,19 @@ class ChirpStackConfigurator:
                     continue
                 
                 if not application_id:
-                    console.print(f"❌ [red]Application '{device['application_name']}' not found for device '{device['name']}'[/red]")
+                    console.print(f"❌ [red]Application '{app_name}' not found for device '{device['name']}'[/red]")
                     progress.advance(task)
                     continue
                 
+                # Add common fields from config to device
+                enhanced_device = device.copy()
+                enhanced_device['application_name'] = app_name
+                enhanced_device['application_description'] = app_description
+                enhanced_device['join_eui'] = chirpstack_config.get('join_eui')
+                enhanced_device['app_key'] = chirpstack_config.get('app_key')
+                
                 # Create device
-                self.create_device(device, application_id, device_profile_id)
+                self.create_device(enhanced_device, application_id, device_profile_id)
                 progress.advance(task)
         
         # Summary
@@ -454,7 +475,7 @@ def main():
     
     try:
         # Run configuration
-        success = configurator.configure_from_files()
+        success = configurator.configure_from_config()
         
         if success:
             console.print("\n🎉 [bold green]ChirpStack has been configured successfully![/bold green]")

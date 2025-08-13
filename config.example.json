@@ -1,0 +1,18 @@
+{
+	"mqtt": {
+		"broker_host": "localhost",
+		"broker_port": 1883,
+		"username": null,
+		"password": null,
+		"keepalive": 60
+	},
+	"chirpstack": {
+		"application_id": "your-app-id-here"
+	},
+	"dashboard": {
+		"title": "My ChirpStack IoT Dashboard",
+		"refresh_rate": 2,
+		"active_threshold_seconds": 120,
+		"recent_threshold_seconds": 600
+	}
+}

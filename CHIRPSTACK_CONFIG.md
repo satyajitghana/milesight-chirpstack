@@ -20,11 +20,15 @@ This repository contains a comprehensive script to configure ChirpStack with Mil
 
 ## 🛠️ Installation
 
-1. **Install dependencies**:
+1. **Install uv and dependencies**:
    ```bash
+   # Install uv (if not already installed)
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   
+   # Set up Python environment
+   uv venv
+   source .venv/bin/activate
    uv sync
-   # or
-   pip install -r requirements.txt
    ```
 
 2. **Verify ChirpStack is running**:
