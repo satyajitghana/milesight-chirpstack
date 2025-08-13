@@ -7,7 +7,10 @@
 		"keepalive": 60
 	},
 	"chirpstack": {
-		"application_id": "c93caa52-d596-4956-a05b-c5f5cd3bad53",
+		"api_key": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImFhYjAwNjMzLTY1MTQtNDEzNy1hZmYwLWI1YTlmMjY1NTY1ZiIsInR5cCI6ImtleSJ9.zFnbjBbifzFybzkuifvZJ5Aa1hFBwpS_XY1I1QAKXEw",
+		"server_url": "localhost:8080",
+		"region_id": "in865",
+		"region_name": "IN865",
 		"application_name": "inkers office app",
 		"application_description": "Application for Milesight IoT devices",
 		"join_eui": "24e124c0002a0001",
@@ -15,10 +18,26 @@
 	},
 	"gateways": [
 		{
-			"id": "24e124fffefd3d66",
-			"name": "Main Gateway",
-			"location": "beast2.local",
-			"description": "Primary LoRaWAN Gateway"
+			"gateway_id": "24e124fffefd3d66",
+			"name": "Inkers Office",
+			"description": "Primary LoRaWAN Gateway for Inkers Office - IN865 Region",
+			"latitude": 12.911009712453023,
+			"longitude": 77.63083408151648,
+			"altitude": 10.0,
+			"tags": {
+				"location": "Inkers Office",
+				"region": "IN865",
+				"type": "indoor",
+				"building": "main_office",
+				"floor": "ground",
+				"installation_date": "2025-01-01",
+				"coverage_area": "office_building",
+				"bandwidth": "125kHz",
+				"frequency_plan": "IN865",
+				"antenna_type": "omnidirectional",
+				"power_source": "mains",
+				"backup_power": "ups"
+			}
 		}
 	],
 	"device_profiles": [
@@ -26,8 +45,8 @@
 			"name": "WS202-868M",
 			"description": "Milesight WS202 PIR and Light Sensor - Region: IN865",
 			"region": "IN865",
-			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
-			"regional_parameters_revision": "RP002_1_0_3",
+			"mac_version": "LORAWAN_1_0_3",
+			"regional_parameters_revision": "A",
 			"adr_algorithm_id": "default",
 			"payload_codec_runtime": "JS",
 			"codec_script_path": "ws202_decoder.js",
@@ -54,7 +73,7 @@
 			},
 			"measurements": {
 				"pir": {
-					"kind": "GAUGE",
+					"kind": "STRING",
 					"name": "Motion Detection"
 				},
 				"daylight": {
@@ -71,8 +90,8 @@
 			"name": "WS203-868M",
 			"description": "Milesight WS203 Temperature and Humidity Sensor - Region: IN865",
 			"region": "IN865",
-			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
-			"regional_parameters_revision": "RP002_1_0_3",
+			"mac_version": "LORAWAN_1_0_3",
+			"regional_parameters_revision": "A",
 			"adr_algorithm_id": "default",
 			"payload_codec_runtime": "JS",
 			"codec_script_path": "ws203_decoder.js",
@@ -107,7 +126,7 @@
 					"name": "Humidity"
 				},
 				"occupancy": {
-					"kind": "GAUGE",
+					"kind": "STRING",
 					"name": "Occupancy"
 				},
 				"battery": {
@@ -120,8 +139,8 @@
 			"name": "WS502-868M",
 			"description": "Milesight WS502 Smart Switch - Region: IN865",
 			"region": "IN865",
-			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
-			"regional_parameters_revision": "RP002_1_0_3",
+			"mac_version": "LORAWAN_1_0_3",
+			"regional_parameters_revision": "A",
 			"adr_algorithm_id": "default",
 			"payload_codec_runtime": "JS",
 			"codec_script_path": "ws502_codec.js",
@@ -164,15 +183,15 @@
 					"name": "Power Factor"
 				},
 				"power_consumption": {
-					"kind": "GAUGE",
+					"kind": "COUNTER",
 					"name": "Energy"
 				},
 				"switch_1": {
-					"kind": "GAUGE",
+					"kind": "STRING",
 					"name": "Switch 1"
 				},
 				"switch_2": {
-					"kind": "GAUGE",
+					"kind": "STRING",
 					"name": "Switch 2"
 				}
 			}
@@ -181,8 +200,8 @@
 			"name": "CT105-868M",
 			"description": "Milesight CT105 Current Transformer Sensor - Region: IN865",
 			"region": "IN865",
-			"mac_version": "LORAWAN_MAC_VERSION_1_0_3",
-			"regional_parameters_revision": "RP002_1_0_3",
+			"mac_version": "LORAWAN_1_0_3",
+			"regional_parameters_revision": "A",
 			"adr_algorithm_id": "default",
 			"payload_codec_runtime": "JS",
 			"codec_script_path": "ct10x_decoder.js",

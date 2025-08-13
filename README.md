@@ -13,11 +13,14 @@ This repository contains a complete solution for setting up [ChirpStack](https:/
 
 - **🐳 Docker-based ChirpStack**: Easy deployment with Docker Compose
 - **🛠️ CLI Management Tools**: Comprehensive command-line interface for device management
-- **📡 Milesight Integration**: Pre-configured device profiles for WS202/WS203 sensors  
+- **📡 Milesight Integration**: Pre-configured device profiles for WS202/WS203/WS502/CT105 sensors  
+- **💡 Smart Lighting Control**: Turn lights on/off remotely via CLI commands
 - **🔄 Automated Configuration**: Step-by-step setup scripts with duplicate detection
 - **📊 Live Dashboard**: Real-time IoT data monitoring with beautiful UI
 - **🔐 Security**: API key management and secure MQTT connections
 - **📱 OTAA Support**: Automatic device activation with proper key management
+- **🔑 Key Management**: Update and refresh OTAA keys for existing devices
+- **🎛️ Device Control**: Send downlink commands to IoT devices
 
 ## 📋 Quick Start
 
@@ -70,6 +73,40 @@ python chirpstack_cli.py check-auth
 python chirpstack_cli.py add-gateways
 python chirpstack_cli.py add-profiles  
 python chirpstack_cli.py add-devices
+```
+
+## 💡 Complete Example Workflow
+
+Here's a complete example of setting up and using the smart IoT system:
+
+```bash
+# 1. Start ChirpStack infrastructure
+docker-compose up -d
+
+# 2. Set up Python environment
+source .venv/bin/activate
+
+# 3. Verify connectivity
+python chirpstack_cli.py check-auth
+
+# 4. Set up infrastructure
+python chirpstack_cli.py add-gateways    # Add your LoRaWAN gateways
+python chirpstack_cli.py add-profiles    # Add device profiles with codecs
+python chirpstack_cli.py add-devices     # Add devices with OTAA keys
+
+# 5. Monitor your deployment
+python chirpstack_cli.py list-devices    # Check device status
+python chirpstack_cli.py get-device 24e124538f256619  # Detailed device info
+
+# 6. Smart lighting control
+python chirpstack_cli.py lights-on       # Turn on office lights
+python chirpstack_cli.py lights-off      # Turn off office lights
+
+# 7. Individual device control
+python chirpstack_cli.py control-light 24e124771f064208 on --switch switch_1
+
+# 8. OTAA key management (if needed)
+python chirpstack_cli.py refresh-device-keys 24e124538f256619
 ```
 
 ## 🏗️ Complete Setup Workflow
@@ -174,28 +211,93 @@ python chirpstack_cli.py list-devices
 
 Complete command-line interface for ChirpStack management:
 
+#### 🔐 Authentication & Configuration
 ```bash
-# Authentication & Testing
+# Test API connectivity and authentication
 python chirpstack_cli.py check-auth
 
-# Gateway Management  
+# Show current configuration from config.json
+python chirpstack_cli.py show-config
+```
+
+#### 📡 Gateway Management  
+```bash
+# List all registered gateways
 python chirpstack_cli.py list-gateways
-python chirpstack_cli.py add-gateway --id "..." --name "..."
-python chirpstack_cli.py add-gateways --file gateways.json
 
-# Device Profile Management
+# Add a single gateway
+python chirpstack_cli.py add-gateway --id "0016c001f15f5e6d" --name "Main Gateway"
+
+# Add multiple gateways from config
+python chirpstack_cli.py add-gateways
+```
+
+#### 📋 Device Profile Management
+```bash
+# List all device profiles
 python chirpstack_cli.py list-profiles
-python chirpstack_cli.py add-profiles --file device_profiles.json
 
-# Application Management
+# Add device profiles from config (includes codec and measurements)
+python chirpstack_cli.py add-profiles
+```
+
+#### 📱 Application Management
+```bash
+# List all applications
 python chirpstack_cli.py list-applications
+```
 
-# Device Management
+#### 🎛️ Device Management
+```bash
+# List all devices with status
 python chirpstack_cli.py list-devices
-python chirpstack_cli.py add-devices --file devices.json
 
+# Add devices from config with OTAA keys
+python chirpstack_cli.py add-devices
+
+# Get detailed device information including OTAA keys
+python chirpstack_cli.py get-device 24e124538f256619
+
+# Delete all devices (with confirmation)
+python chirpstack_cli.py delete-all-devices
+```
+
+#### 🔑 OTAA Key Management
+```bash
+# Update OTAA keys for a specific device
+python chirpstack_cli.py update-device-keys 24e124538f256619
+
+# Force refresh keys by deleting and recreating
+python chirpstack_cli.py refresh-device-keys 24e124538f256619
+
+# Use custom app key
+python chirpstack_cli.py update-device-keys 24e124538f256619 --app-key "your_custom_key"
+```
+
+#### 💡 Smart Light Control (WS502 Devices)
+```bash
+# Turn ON all light switches
+python chirpstack_cli.py lights-on
+
+# Turn OFF all light switches  
+python chirpstack_cli.py lights-off
+
+# Control specific device - both switches
+python chirpstack_cli.py control-light 24e124771f064208 on
+
+# Control specific device - single switch
+python chirpstack_cli.py control-light 24e124771f064208 off --switch switch_1
+python chirpstack_cli.py control-light 24e124771f064208 on --switch switch_2
+```
+
+#### 🆘 Help & Documentation
+```bash
 # Get help for any command
+python chirpstack_cli.py --help
 python chirpstack_cli.py [command] --help
+
+# List all available commands
+python chirpstack_cli.py
 ```
 
 ### Configuration Scripts
@@ -336,12 +438,49 @@ docker-compose restart mosquitto
 
 ## 🔍 Supported Milesight Devices
 
-| Device | Model | Sensors | Profile |
-|--------|-------|---------|---------|
-| WS202 | PIR & Light | Motion, Light Level, Battery | WS202-868M |
-| WS203 | Temp & Humidity | Temperature, Humidity, Occupancy, Battery | WS203-868M |
+| Device | Model | Sensors | Profile | CLI Control |
+|--------|-------|---------|---------|-------------|
+| WS202 | PIR & Light | Motion, Light Level, Battery | WS202-868M | ❌ Read-only |
+| WS203 | Temp & Humidity | Temperature, Humidity, Occupancy, Battery | WS203-868M | ❌ Read-only |
+| WS502 | Smart Switch | Light Control, Power Monitoring, Battery | WS502-868M | ✅ **Smart Lighting** |
+| CT105 | Current Transformer | Power Consumption, Current, Battery | CT105-868M | ❌ Read-only |
 
 Device decoders are automatically downloaded from the [official Milesight repository](https://github.com/Milesight-IoT/SensorDecoders).
+
+### 💡 Smart Lighting Features (WS502)
+
+The CLI includes comprehensive smart lighting control for WS502 devices:
+
+#### Bulk Control
+- **Turn all lights ON/OFF** with a single command
+- **Automatic device discovery** from configuration
+- **Parallel command execution** for fast response
+
+#### Individual Control  
+- **Target specific devices** by Device EUI
+- **Control individual switches** (switch_1, switch_2, or both)
+- **Real-time command feedback** with queue tracking
+
+#### Command Examples
+```bash
+# Office-wide lighting control
+python chirpstack_cli.py lights-on      # Turn on all lights
+python chirpstack_cli.py lights-off     # Turn off all lights
+
+# Room-specific control
+python chirpstack_cli.py control-light 24e124771f064208 on    # Both switches
+python chirpstack_cli.py control-light 24e124771f064208 off --switch switch_1
+
+# Current deployment: 5 smart switches
+# - CSO Cabin, CEO Cabin, Conference Room
+# - Office Area 1, Office Area 2
+```
+
+#### Technical Implementation
+- **Separate payloads** for each switch (encoder requirement)
+- **ChirpStack queue integration** with confirmed delivery
+- **JSON-based payload encoding** using device profile codec
+- **Error handling** with detailed feedback
 
 ## 🐛 Troubleshooting
 
@@ -407,6 +546,50 @@ docker-compose stop mosquitto
 rm configuration/mosquitto/config/passwd
 docker-compose up mosquitto-passwd
 docker-compose up mosquitto
+```
+
+### OTAA Key Issues
+
+```bash
+# Check if keys are properly set
+python chirpstack_cli.py get-device 24e124538f256619 --show-keys
+
+# Force refresh keys if they show as zeros
+python chirpstack_cli.py refresh-device-keys 24e124538f256619
+
+# Update all devices at once (if needed)
+python chirpstack_cli.py delete-all-devices --confirm
+python chirpstack_cli.py add-devices
+```
+
+### Light Control Issues
+
+```bash
+# Check if WS502 devices are detected
+python chirpstack_cli.py list-devices | grep WS502
+
+# Test individual device control first
+python chirpstack_cli.py control-light 24e124771f064208 on --switch switch_1
+
+# Verify command was queued in ChirpStack
+# Check Web UI: Applications → Device → Queue
+
+# Check device logs in ChirpStack for downlink delivery status
+```
+
+### Device Communication Issues
+
+```bash
+# Check if devices are online and joined
+python chirpstack_cli.py list-devices
+
+# Verify device profile has correct codec
+python chirpstack_cli.py list-profiles
+
+# Check ChirpStack logs for join/communication errors
+docker-compose logs chirpstack | grep "device\|join\|otaa"
+
+# Force device rejoin by power cycling the device
 ```
 
 ## 📚 Additional Resources

@@ -9,14 +9,15 @@ Usage:
     python chirpstack_cli.py [COMMAND] [OPTIONS]
 
 Commands:
+    show-config         Show current configuration from config.json
     check-auth          Check if API authentication is working
     list-gateways       List all gateways
     add-gateway         Add a single gateway
-    add-gateways        Add gateways from JSON file
+    add-gateways        Add gateways from config.json or JSON file
     list-profiles       List all device profiles
-    add-profiles        Add device profiles from JSON file
+    add-profiles        Add device profiles from config.json or JSON file
     list-devices        List all devices
-    add-devices         Add devices from JSON file
+    add-devices         Add devices from config.json or JSON file
     list-applications   List all applications
 
 Author: AI Assistant
@@ -37,15 +38,27 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt, Confirm
 import requests
 from chirpstack_api import api
+from chirpstack_api.common import common_pb2 as common
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="ChirpStack CLI Tool for managing gateways, device profiles, and devices")
 console = Console()
 
-# Global configuration
-# API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImQ3NmYzMzVmLWY0ZGEtNGRmNi05ODAwLWQ3ODkzOGMxYjdlNyIsInR5cCI6ImtleSJ9.Dr6Qbw4Kfr6rkoQQflQ9a5Hv8Nsa4PednO_4M3B8p5A"
-API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImFhYjAwNjMzLTY1MTQtNDEzNy1hZmYwLWI1YTlmMjY1NTY1ZiIsInR5cCI6ImtleSJ9.zFnbjBbifzFybzkuifvZJ5Aa1hFBwpS_XY1I1QAKXEw"
-SERVER_URL = "localhost:8080"
+# Global configuration - will be loaded from config.json
+CONFIG_FILE = "config.json"
+config_data = None
+
+def load_config():
+    """Load configuration from config.json"""
+    global config_data
+    if config_data is None:
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config_data = json.load(f)
+        except Exception as e:
+            console.print(f"❌ [red]Failed to load config from {CONFIG_FILE}: {e}[/red]")
+            raise typer.Exit(1)
+    return config_data
 
 class ChirpStackCLI:
     def __init__(self, api_key: str, server_url: str):
@@ -101,10 +114,51 @@ def get_client():
     """Get or create the global client instance"""
     global client
     if client is None:
-        api_key = os.getenv("CHIRPSTACK_API_KEY", API_KEY)
-        server_url = os.getenv("CHIRPSTACK_SERVER", SERVER_URL)
+        config = load_config()
+        api_key = os.getenv("CHIRPSTACK_API_KEY", config['chirpstack']['api_key'])
+        server_url = os.getenv("CHIRPSTACK_SERVER", config['chirpstack']['server_url'])
         client = ChirpStackCLI(api_key, server_url)
     return client
+
+@app.command()
+def show_config():
+    """Show current configuration from config.json"""
+    console.print("⚙️  [bold blue]ChirpStack Configuration[/bold blue]")
+    
+    try:
+        config = load_config()
+        
+        # Display ChirpStack configuration
+        console.print(f"\n🔧 [cyan]ChirpStack Settings:[/cyan]")
+        console.print(f"   Server URL: [green]{config['chirpstack']['server_url']}[/green]")
+        console.print(f"   API Key: [green]{'*' * 20}...{config['chirpstack']['api_key'][-8:]}[/green]")
+        console.print(f"   Region: [green]{config['chirpstack']['region_name']} ({config['chirpstack']['region_id']})[/green]")
+        console.print(f"   Application Name: [green]{config['chirpstack']['application_name']}[/green]")
+        console.print(f"   Join EUI: [green]{config['chirpstack']['join_eui']}[/green]")
+        
+        # Display gateways
+        gateways = config.get('gateways', [])
+        console.print(f"\n📡 [cyan]Gateways ({len(gateways)}):[/cyan]")
+        for gateway in gateways:
+            console.print(f"   - [green]{gateway['name']}[/green] ({gateway['gateway_id']})")
+            console.print(f"     Location: {gateway.get('latitude', 'N/A')}, {gateway.get('longitude', 'N/A')}")
+        
+        # Display device profiles
+        profiles = config.get('device_profiles', [])
+        console.print(f"\n📋 [cyan]Device Profiles ({len(profiles)}):[/cyan]")
+        for profile in profiles:
+            console.print(f"   - [green]{profile['name']}[/green] - {profile['description']}")
+        
+        # Display devices
+        devices = config.get('devices', [])
+        console.print(f"\n📱 [cyan]Devices ({len(devices)}):[/cyan]")
+        for device in devices:
+            console.print(f"   - [green]{device['name']}[/green] ({device['dev_eui']})")
+            console.print(f"     Location: {device.get('location', 'N/A')}, Type: {device.get('type', 'N/A')}")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to load configuration: {e}[/red]")
+        raise typer.Exit(1)
 
 @app.command()
 def check_auth():
@@ -157,8 +211,18 @@ def list_gateways():
         table.add_column("Last Seen", style="blue")
         
         for gateway in resp.result:
-            last_seen = "Never" if not gateway.last_seen_at else gateway.last_seen_at.strftime("%Y-%m-%d %H:%M:%S")
-            location = f"{gateway.location.latitude:.6f}, {gateway.location.longitude:.6f}" if gateway.location else "Not set"
+            try:
+                if hasattr(gateway, 'last_seen_at') and gateway.last_seen_at and hasattr(gateway.last_seen_at, 'ToDatetime'):
+                    last_seen = gateway.last_seen_at.ToDatetime().strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    last_seen = "Never"
+            except:
+                last_seen = "Never"
+            
+            try:
+                location = f"{gateway.location.latitude:.6f}, {gateway.location.longitude:.6f}" if gateway.location and hasattr(gateway.location, 'latitude') else "Not set"
+            except:
+                location = "Not set"
             
             table.add_row(
                 gateway.gateway_id,
@@ -212,13 +276,21 @@ def add_gateway(
         gateway.description = description
         gateway.tenant_id = tenant_id
         
+        # Add region tags from config
+        config = load_config()
+        gateway.tags['region_id'] = config['chirpstack']['region_id']
+        gateway.tags['region_name'] = config['chirpstack']['region_name']
+        
+        # Set stats interval to 30 seconds
+        gateway.stats_interval = 30
+        
         # Set location if provided
         if latitude != 0.0 or longitude != 0.0:
-            location = api.Location()
+            location = common.Location()
             location.latitude = latitude
             location.longitude = longitude
             location.altitude = altitude
-            location.source = api.LocationSource.UNKNOWN
+            location.source = common.LocationSource.UNKNOWN
             gateway.location.CopyFrom(location)
         
         req = api.CreateGatewayRequest()
@@ -234,15 +306,11 @@ def add_gateway(
 
 @app.command()
 def add_gateways(
-    file: str = typer.Option("gateways.json", "--file", "-f", help="JSON file with gateways"),
+    from_config: bool = typer.Option(True, "--from-config", help="Load gateways from config.json"),
+    file: str = typer.Option("gateways.json", "--file", "-f", help="JSON file with gateways (if not using config)"),
     force: bool = typer.Option(False, "--force", help="Force creation even if gateway exists")
 ):
-    """Add gateways from JSON file"""
-    console.print(f"📡 [bold blue]Adding Gateways from {file}[/bold blue]")
-    
-    if not os.path.exists(file):
-        console.print(f"❌ [red]File {file} not found[/red]")
-        raise typer.Exit(1)
+    """Add gateways from config.json or JSON file"""
     
     try:
         cli = get_client()
@@ -251,11 +319,24 @@ def add_gateways(
         if not tenant_id:
             raise typer.Exit(1)
         
-        # Load gateways
-        with open(file, 'r') as f:
-            gateways = json.load(f)
+        # Load gateways from config.json or separate file
+        if from_config:
+            console.print(f"📡 [bold blue]Adding Gateways from {CONFIG_FILE}[/bold blue]")
+            config = load_config()
+            gateways = config.get('gateways', [])
+        else:
+            console.print(f"📡 [bold blue]Adding Gateways from {file}[/bold blue]")
+            if not os.path.exists(file):
+                console.print(f"❌ [red]File {file} not found[/red]")
+                raise typer.Exit(1)
+            with open(file, 'r') as f:
+                gateways = json.load(f)
         
-        console.print(f"📂 [cyan]Loaded {len(gateways)} gateways from {file}[/cyan]")
+        if not gateways:
+            console.print("❌ [red]No gateways found in configuration[/red]")
+            raise typer.Exit(1)
+        
+        console.print(f"📂 [cyan]Loaded {len(gateways)} gateways from configuration[/cyan]")
         
         created_count = 0
         skipped_count = 0
@@ -316,16 +397,22 @@ def _create_gateway(cli, tenant_id, gateway_config):
         
         # Set location if provided
         if gateway_config.get('latitude') and gateway_config.get('longitude'):
-            location = api.Location()
+            location = common.Location()
             location.latitude = gateway_config['latitude']
             location.longitude = gateway_config['longitude']
             location.altitude = gateway_config.get('altitude', 0.0)
-            location.source = api.LocationSource.UNKNOWN
+            location.source = common.LocationSource.UNKNOWN
             gateway.location.CopyFrom(location)
         
-        # Add tags
+        # Add tags (including region information)
+        config = load_config()
+        gateway.tags['region_id'] = config['chirpstack']['region_id']
+        gateway.tags['region_name'] = config['chirpstack']['region_name']
         for key, value in gateway_config.get('tags', {}).items():
             gateway.tags[key] = str(value)
+        
+        # Set stats interval to 30 seconds
+        gateway.stats_interval = 30
         
         req = api.CreateGatewayRequest()
         req.gateway.CopyFrom(gateway)
@@ -366,14 +453,47 @@ def list_profiles():
         table.add_column("MAC Version", style="blue")
         table.add_column("OTAA", style="red")
         
-        for profile in resp.result:
+        for profile_item in resp.result:
+            # Get full profile details to access description
+            try:
+                get_req = api.GetDeviceProfileRequest()
+                get_req.id = profile_item.id
+                full_profile_resp = cli.device_profile_client.Get(get_req, metadata=cli.get_auth_metadata())
+                profile = full_profile_resp.device_profile
+                
+                # Get region and mac version names
+                region_name = "Unknown"
+                mac_version_name = "Unknown"
+                
+                try:
+                    if hasattr(profile, 'region') and profile.region is not None:
+                        region_name = common.Region.Name(profile.region)
+                except:
+                    region_name = "Unknown"
+                    
+                try:
+                    if hasattr(profile, 'mac_version') and profile.mac_version is not None:
+                        mac_version_name = common.MacVersion.Name(profile.mac_version)
+                except:
+                    mac_version_name = "Unknown"
+                
+                description = profile.description or "No description"
+                
+            except Exception as e:
+                # Fallback to basic info if Get fails
+                console.print(f"⚠️  [yellow]Warning: Could not fetch full details for profile {profile_item.name}: {e}[/yellow]")
+                profile = profile_item
+                region_name = common.Region.Name(profile_item.region) if hasattr(profile_item, 'region') else "Unknown"
+                mac_version_name = common.MacVersion.Name(profile_item.mac_version) if hasattr(profile_item, 'mac_version') else "Unknown"
+                description = "No description"
+            
             table.add_row(
-                profile.id[:8] + "...",
-                profile.name,
-                profile.description or "No description",
-                profile.region.name,
-                profile.mac_version.name,
-                "✅" if profile.supports_otaa else "❌"
+                profile_item.id[:8] + "...",
+                profile_item.name,
+                description,
+                region_name,
+                mac_version_name,
+                "✅" if getattr(profile, 'supports_otaa', False) else "❌"
             )
         
         console.print(table)
@@ -385,15 +505,11 @@ def list_profiles():
 
 @app.command()
 def add_profiles(
-    file: str = typer.Option("device_profiles.json", "--file", "-f", help="JSON file with device profiles"),
+    from_config: bool = typer.Option(True, "--from-config", help="Load device profiles from config.json"),
+    file: str = typer.Option("device_profiles.json", "--file", "-f", help="JSON file with device profiles (if not using config)"),
     force: bool = typer.Option(False, "--force", help="Force creation even if profile exists")
 ):
-    """Add device profiles from JSON file"""
-    console.print(f"📋 [bold blue]Adding Device Profiles from {file}[/bold blue]")
-    
-    if not os.path.exists(file):
-        console.print(f"❌ [red]File {file} not found[/red]")
-        raise typer.Exit(1)
+    """Add device profiles from config.json or JSON file"""
     
     try:
         cli = get_client()
@@ -402,11 +518,24 @@ def add_profiles(
         if not tenant_id:
             raise typer.Exit(1)
         
-        # Load profiles
-        with open(file, 'r') as f:
-            profiles = json.load(f)
+        # Load profiles from config.json or separate file
+        if from_config:
+            console.print(f"📋 [bold blue]Adding Device Profiles from {CONFIG_FILE}[/bold blue]")
+            config = load_config()
+            profiles = config.get('device_profiles', [])
+        else:
+            console.print(f"📋 [bold blue]Adding Device Profiles from {file}[/bold blue]")
+            if not os.path.exists(file):
+                console.print(f"❌ [red]File {file} not found[/red]")
+                raise typer.Exit(1)
+            with open(file, 'r') as f:
+                profiles = json.load(f)
         
-        console.print(f"📂 [cyan]Loaded {len(profiles)} profiles from {file}[/cyan]")
+        if not profiles:
+            console.print("❌ [red]No device profiles found in configuration[/red]")
+            raise typer.Exit(1)
+        
+        console.print(f"📂 [cyan]Loaded {len(profiles)} profiles from configuration[/cyan]")
         
         # Get existing profiles
         existing_profiles = {}
@@ -419,7 +548,8 @@ def add_profiles(
             existing_profiles[profile.name] = profile.id
         
         created_count = 0
-        skipped_count = 0
+        updated_count = 0
+        error_count = 0
         
         with Progress(
             SpinnerColumn(),
@@ -430,43 +560,55 @@ def add_profiles(
             
             for profile_config in profiles:
                 profile_name = profile_config['name']
+                existing_profile_id = existing_profiles.get(profile_name)
                 
-                if profile_name in existing_profiles and not force:
-                    console.print(f"⏭️  [yellow]Skipping existing profile: {profile_name}[/yellow]")
-                    skipped_count += 1
-                else:
-                    if _create_device_profile(cli, tenant_id, profile_config):
-                        created_count += 1
-                        console.print(f"✅ [green]Created profile: {profile_name}[/green]")
+                if _create_device_profile(cli, tenant_id, profile_config, existing_profile_id):
+                    if existing_profile_id:
+                        updated_count += 1
                     else:
-                        console.print(f"❌ [red]Failed to create profile: {profile_name}[/red]")
+                        created_count += 1
+                else:
+                    error_count += 1
                 
                 progress.advance(task)
         
-        console.print(f"\n📊 [green]Summary: {created_count} created, {skipped_count} skipped[/green]")
+        console.print(f"\n📊 [green]Summary: {created_count} created, {updated_count} updated, {error_count} errors[/green]")
         
     except Exception as e:
         console.print(f"❌ [red]Failed to add device profiles: {e}[/red]")
         raise typer.Exit(1)
 
-def _create_device_profile(cli, tenant_id, profile_config):
-    """Helper function to create a device profile"""
+def _create_device_profile(cli, tenant_id, profile_config, existing_profile_id=None):
+    """Helper function to create or update a device profile"""
     try:
-        # Download codec script if URL provided
+        # Load codec script from local path (preferred) or URL (fallback)
         codec_script = ""
-        if profile_config.get('codec_script_url'):
+        if profile_config.get('codec_script_path'):
+            console.print(f"📄 [cyan]Loading local codec for {profile_config['name']} from {profile_config['codec_script_path']}[/cyan]")
+            try:
+                codec_path = profile_config['codec_script_path'] if os.path.isabs(profile_config['codec_script_path']) else os.path.join(os.getcwd(), profile_config['codec_script_path'])
+                with open(codec_path, "r", encoding="utf-8") as f:
+                    codec_script = f.read()
+                console.print(f"✅ [green]Loaded codec script ({len(codec_script)} characters)[/green]")
+            except Exception as e:
+                console.print(f"❌ [red]Failed to read codec from path '{profile_config['codec_script_path']}': {e}[/red]")
+                codec_script = ""
+        elif profile_config.get('codec_script_url'):
+            console.print(f"📥 [cyan]Downloading codec script for {profile_config['name']}...[/cyan]")
             response = requests.get(profile_config['codec_script_url'], timeout=30)
             response.raise_for_status()
             codec_script = response.text
         
-        # Create device profile
+        # Create or update device profile
         device_profile = api.DeviceProfile()
+        if existing_profile_id:
+            device_profile.id = existing_profile_id
         device_profile.name = profile_config['name']
         device_profile.description = profile_config['description']
         device_profile.tenant_id = tenant_id
-        device_profile.region = api.Region.Value(profile_config['region'])
-        device_profile.mac_version = api.MacVersion.Value(profile_config['mac_version'])
-        device_profile.reg_params_revision = api.RegParamsRevision.Value(profile_config['regional_parameters_revision'])
+        device_profile.region = common.Region.Value(profile_config['region'])
+        device_profile.mac_version = common.MacVersion.Value(profile_config['mac_version'])
+        device_profile.reg_params_revision = common.RegParamsRevision.Value(profile_config['regional_parameters_revision'])
         device_profile.adr_algorithm_id = profile_config['adr_algorithm_id']
         device_profile.payload_codec_runtime = api.CodecRuntime.Value("JS")
         device_profile.payload_codec_script = codec_script
@@ -477,7 +619,7 @@ def _create_device_profile(cli, tenant_id, profile_config):
         device_profile.supports_class_b = profile_config['supports_class_b']
         device_profile.supports_class_c = profile_config['supports_class_c']
         device_profile.class_b_timeout = profile_config['class_b_timeout']
-        device_profile.class_b_ping_slot_period = profile_config['class_b_ping_slot_period']
+        device_profile.class_b_ping_slot_periodicity = profile_config['class_b_ping_slot_period']
         device_profile.class_b_ping_slot_dr = profile_config['class_b_ping_slot_dr']
         device_profile.class_b_ping_slot_freq = profile_config['class_b_ping_slot_freq']
         device_profile.class_c_timeout = profile_config['class_c_timeout']
@@ -490,10 +632,28 @@ def _create_device_profile(cli, tenant_id, profile_config):
         for key, value in profile_config.get('tags', {}).items():
             device_profile.tags[key] = value
         
-        req = api.CreateDeviceProfileRequest()
-        req.device_profile.CopyFrom(device_profile)
+        # Add measurements
+        for key, measurement in profile_config.get('measurements', {}).items():
+            measurement_obj = api.Measurement()
+            measurement_obj.kind = api.MeasurementKind.Value(measurement['kind'])
+            measurement_obj.name = measurement['name']
+            device_profile.measurements[key].CopyFrom(measurement_obj)
         
-        cli.device_profile_client.Create(req, metadata=cli.get_auth_metadata())
+        # Enable automatic measurement detection
+        device_profile.auto_detect_measurements = True
+        
+        if existing_profile_id:
+            # Update existing profile
+            req = api.UpdateDeviceProfileRequest()
+            req.device_profile.CopyFrom(device_profile)
+            cli.device_profile_client.Update(req, metadata=cli.get_auth_metadata())
+            console.print(f"🔄 [green]Updated profile: {profile_config['name']} (ID: {existing_profile_id})[/green]")
+        else:
+            # Create new profile
+            req = api.CreateDeviceProfileRequest()
+            req.device_profile.CopyFrom(device_profile)
+            cli.device_profile_client.Create(req, metadata=cli.get_auth_metadata())
+            console.print(f"✅ [green]Created profile: {profile_config['name']}[/green]")
         return True
         
     except Exception as e:
@@ -594,13 +754,13 @@ def list_devices(
         table.add_column("Status", style="blue")
         
         for device in resp.result:
-            status = "🔴 Disabled" if device.is_disabled else "🟢 Enabled"
+            status = "🔴 Disabled" if getattr(device, 'is_disabled', False) else "🟢 Enabled"
             
             table.add_row(
                 device.dev_eui,
                 device.name,
-                device.description or "No description",
-                device.device_profile_name or "Unknown",
+                getattr(device, 'description', 'No description') or "No description",
+                getattr(device, 'device_profile_name', 'Unknown') or "Unknown",
                 status
             )
         
@@ -612,16 +772,404 @@ def list_devices(
         raise typer.Exit(1)
 
 @app.command()
+def get_device(
+    dev_eui: str = typer.Argument(..., help="Device EUI to get details for"),
+    show_keys: bool = typer.Option(True, "--show-keys/--no-keys", help="Show OTAA keys")
+):
+    """Get detailed information for a specific device including OTAA keys"""
+    console.print(f"📱 [bold blue]Getting Device Details: {dev_eui}[/bold blue]")
+    
+    try:
+        cli = get_client()
+        
+        # Get device details
+        req = api.GetDeviceRequest()
+        req.dev_eui = dev_eui
+        resp = cli.device_client.Get(req, metadata=cli.get_auth_metadata())
+        device = resp.device
+        
+        # Display device information
+        console.print(f"\n📋 [cyan]Device Information:[/cyan]")
+        console.print(f"   Device EUI: [green]{device.dev_eui}[/green]")
+        console.print(f"   Name: [green]{device.name}[/green]")
+        console.print(f"   Description: [green]{device.description or 'No description'}[/green]")
+        console.print(f"   Application ID: [green]{device.application_id}[/green]")
+        console.print(f"   Device Profile ID: [green]{device.device_profile_id}[/green]")
+        console.print(f"   Join EUI: [green]{device.join_eui}[/green]")
+        console.print(f"   Skip FCnt Check: [green]{device.skip_fcnt_check}[/green]")
+        console.print(f"   Is Disabled: [green]{device.is_disabled}[/green]")
+        
+        # Display timestamps
+        console.print(f"\n⏰ [cyan]Timestamps:[/cyan]")
+        console.print(f"   Created: [green]{resp.created_at.ToDatetime().strftime('%Y-%m-%d %H:%M:%S') if resp.created_at else 'Unknown'}[/green]")
+        console.print(f"   Updated: [green]{resp.updated_at.ToDatetime().strftime('%Y-%m-%d %H:%M:%S') if resp.updated_at else 'Unknown'}[/green]")
+        console.print(f"   Last Seen: [green]{resp.last_seen_at.ToDatetime().strftime('%Y-%m-%d %H:%M:%S') if resp.last_seen_at else 'Never'}[/green]")
+        
+        # Display tags if any
+        if device.tags:
+            console.print(f"\n🏷️  [cyan]Tags:[/cyan]")
+            for key, value in device.tags.items():
+                console.print(f"   {key}: [green]{value}[/green]")
+        
+        # Display variables if any
+        if device.variables:
+            console.print(f"\n🔧 [cyan]Variables:[/cyan]")
+            for key, value in device.variables.items():
+                console.print(f"   {key}: [green]{value}[/green]")
+        
+        # Get and display OTAA keys if requested
+        if show_keys:
+            try:
+                keys_req = api.GetDeviceKeysRequest()
+                keys_req.dev_eui = dev_eui
+                keys_resp = cli.device_client.GetKeys(keys_req, metadata=cli.get_auth_metadata())
+                
+                console.print(f"\n🔑 [cyan]OTAA Keys:[/cyan]")
+                console.print(f"   Device EUI: [green]{keys_resp.device_keys.dev_eui}[/green]")
+                console.print(f"   App Key: [green]{keys_resp.device_keys.app_key or 'Not set'}[/green]")
+                console.print(f"   Network Key: [green]{keys_resp.device_keys.nwk_key or 'Not set'}[/green]")
+                console.print(f"   Gen App Key: [green]{keys_resp.device_keys.gen_app_key or 'Not set'}[/green]")
+                
+                console.print(f"\n⏰ [cyan]Key Timestamps:[/cyan]")
+                console.print(f"   Keys Created: [green]{keys_resp.created_at.ToDatetime().strftime('%Y-%m-%d %H:%M:%S') if keys_resp.created_at else 'Unknown'}[/green]")
+                console.print(f"   Keys Updated: [green]{keys_resp.updated_at.ToDatetime().strftime('%Y-%m-%d %H:%M:%S') if keys_resp.updated_at else 'Unknown'}[/green]")
+                
+            except grpc.RpcError as e:
+                if e.code() == grpc.StatusCode.NOT_FOUND:
+                    console.print(f"\n🔑 [yellow]OTAA Keys: Not found (device may not have keys configured)[/yellow]")
+                else:
+                    console.print(f"\n❌ [red]Error getting OTAA keys: {e}[/red]")
+        
+        # Display device status if available
+        if hasattr(resp, 'device_status') and resp.device_status:
+            console.print(f"\n📊 [cyan]Device Status:[/cyan]")
+            console.print(f"   Margin: [green]{resp.device_status.margin}[/green]")
+            console.print(f"   External Power: [green]{resp.device_status.external_power_source}[/green]")
+            console.print(f"   Battery Level: [green]{resp.device_status.battery_level}%[/green]")
+        
+    except grpc.RpcError as e:
+        if e.code() == grpc.StatusCode.NOT_FOUND:
+            console.print(f"❌ [red]Device not found: {dev_eui}[/red]")
+        else:
+            console.print(f"❌ [red]Error getting device: {e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"❌ [red]Failed to get device details: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+def delete_all_devices(
+    confirm: bool = typer.Option(False, "--confirm", help="Skip confirmation prompt")
+):
+    """Delete ALL devices from ChirpStack"""
+    if not confirm:
+        console.print("⚠️  [bold red]WARNING: This will delete ALL devices from ChirpStack![/bold red]")
+        confirm_delete = typer.confirm("Are you sure you want to continue?")
+        if not confirm_delete:
+            console.print("❌ [yellow]Operation cancelled[/yellow]")
+            raise typer.Exit(0)
+    
+    console.print("🗑️  [bold red]Deleting All Devices...[/bold red]")
+    
+    # Get device EUIs from config instead of API
+    config = load_config()
+    devices_config = config.get('devices', [])
+    
+    if not devices_config:
+        console.print("ℹ️  [cyan]No devices found in config to delete[/cyan]")
+        return
+    
+    console.print(f"Found {len(devices_config)} devices in config to delete...")
+    
+    try:
+        cli = get_client()
+        deleted_count = 0
+        failed_count = 0
+        
+        for device_config in devices_config:
+            try:
+                # Delete device (ChirpStack will automatically delete associated keys)
+                delete_req = api.DeleteDeviceRequest()
+                delete_req.dev_eui = device_config['dev_eui']
+                cli.device_client.Delete(delete_req, metadata=cli.get_auth_metadata())
+                
+                console.print(f"🗑️  [red]Deleted: {device_config['name']} ({device_config['dev_eui']})[/red]")
+                deleted_count += 1
+                
+            except grpc.RpcError as e:
+                if "NOT_FOUND" in str(e):
+                    console.print(f"⚠️  [yellow]Device not found (already deleted): {device_config['name']} ({device_config['dev_eui']})[/yellow]")
+                else:
+                    console.print(f"❌ [red]Failed to delete {device_config['name']} ({device_config['dev_eui']}): {e}[/red]")
+                    failed_count += 1
+        
+        console.print(f"\n📊 [cyan]Summary:[/cyan]")
+        console.print(f"   Deleted: [green]{deleted_count}[/green]")
+        console.print(f"   Failed: [red]{failed_count}[/red]")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to delete devices: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+def update_device_keys(
+    dev_eui: str = typer.Argument(..., help="Device EUI to update keys for"),
+    app_key: str = typer.Option(None, help="New application key (if not provided, uses config default)")
+):
+    """Update OTAA keys for a specific device"""
+    console.print(f"🔑 [bold blue]Updating OTAA Keys for Device: {dev_eui}[/bold blue]")
+    
+    try:
+        cli = get_client()
+        config = load_config()
+        
+        # Use provided app_key or default from config
+        if not app_key:
+            app_key = config['chirpstack']['app_key']
+        
+        # Create device keys
+        device_keys = api.DeviceKeys()
+        device_keys.dev_eui = dev_eui
+        device_keys.app_key = app_key
+        
+        try:
+            # Try to update existing keys first
+            keys_req = api.UpdateDeviceKeysRequest()
+            keys_req.device_keys.CopyFrom(device_keys)
+            cli.device_client.UpdateKeys(keys_req, metadata=cli.get_auth_metadata())
+            console.print(f"🔄 [green]Updated OTAA keys for device: {dev_eui}[/green]")
+            console.print(f"   App Key: [cyan]{app_key}[/cyan]")
+            
+        except grpc.RpcError as e:
+            if "NOT_FOUND" in str(e):
+                # Keys don't exist, create them
+                keys_req = api.CreateDeviceKeysRequest()
+                keys_req.device_keys.CopyFrom(device_keys)
+                cli.device_client.CreateKeys(keys_req, metadata=cli.get_auth_metadata())
+                console.print(f"✅ [green]Created OTAA keys for device: {dev_eui}[/green]")
+                console.print(f"   App Key: [cyan]{app_key}[/cyan]")
+            else:
+                raise e
+        
+        # Verify the keys were set correctly
+        console.print("\n🔍 [cyan]Verifying keys...[/cyan]")
+        try:
+            verify_req = api.GetDeviceKeysRequest()
+            verify_req.dev_eui = dev_eui
+            verify_resp = cli.device_client.GetKeys(verify_req, metadata=cli.get_auth_metadata())
+            
+            console.print(f"✅ [green]Verification successful:[/green]")
+            console.print(f"   Device EUI: [cyan]{verify_resp.device_keys.dev_eui}[/cyan]")
+            console.print(f"   App Key: [cyan]{verify_resp.device_keys.app_key}[/cyan]")
+            console.print(f"   Network Key: [cyan]{verify_resp.device_keys.nwk_key}[/cyan]")
+            
+        except Exception as verify_error:
+            console.print(f"⚠️  [yellow]Could not verify keys: {verify_error}[/yellow]")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to update device keys: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+def refresh_device_keys(
+    dev_eui: str = typer.Argument(..., help="Device EUI to refresh keys for"),
+    app_key: str = typer.Option(None, help="New application key (if not provided, uses config default)")
+):
+    """Force refresh OTAA keys by deleting and recreating them"""
+    console.print(f"🔄 [bold blue]Force Refreshing OTAA Keys for Device: {dev_eui}[/bold blue]")
+    
+    try:
+        cli = get_client()
+        config = load_config()
+        
+        # Use provided app_key or default from config
+        if not app_key:
+            app_key = config['chirpstack']['app_key']
+        
+        # Step 1: Delete existing keys
+        console.print("🗑️  [yellow]Deleting existing keys...[/yellow]")
+        try:
+            delete_req = api.DeleteDeviceKeysRequest()
+            delete_req.dev_eui = dev_eui
+            cli.device_client.DeleteKeys(delete_req, metadata=cli.get_auth_metadata())
+            console.print("✅ [green]Existing keys deleted[/green]")
+        except grpc.RpcError as e:
+            if "NOT_FOUND" in str(e):
+                console.print("ℹ️  [cyan]No existing keys found to delete[/cyan]")
+            else:
+                console.print(f"⚠️  [yellow]Warning: Could not delete existing keys: {e}[/yellow]")
+        
+        # Step 2: Wait a moment for the deletion to propagate
+        import time
+        time.sleep(1)
+        
+        # Step 3: Create new keys
+        console.print("🔑 [cyan]Creating new keys...[/cyan]")
+        device_keys = api.DeviceKeys()
+        device_keys.dev_eui = dev_eui
+        device_keys.app_key = app_key
+        
+        keys_req = api.CreateDeviceKeysRequest()
+        keys_req.device_keys.CopyFrom(device_keys)
+        cli.device_client.CreateKeys(keys_req, metadata=cli.get_auth_metadata())
+        console.print(f"✅ [green]Created new OTAA keys for device: {dev_eui}[/green]")
+        console.print(f"   App Key: [cyan]{app_key}[/cyan]")
+        
+        # Step 4: Verify the keys were set correctly
+        console.print("\n🔍 [cyan]Verifying new keys...[/cyan]")
+        try:
+            verify_req = api.GetDeviceKeysRequest()
+            verify_req.dev_eui = dev_eui
+            verify_resp = cli.device_client.GetKeys(verify_req, metadata=cli.get_auth_metadata())
+            
+            console.print(f"✅ [green]Verification successful:[/green]")
+            console.print(f"   Device EUI: [cyan]{verify_resp.device_keys.dev_eui}[/cyan]")
+            console.print(f"   App Key: [cyan]{verify_resp.device_keys.app_key}[/cyan]")
+            console.print(f"   Network Key: [cyan]{verify_resp.device_keys.nwk_key}[/cyan]")
+            
+            # Additional verification
+            if verify_resp.device_keys.app_key == app_key:
+                console.print("🎉 [bold green]App Key matches expected value![/bold green]")
+            else:
+                console.print("❌ [red]App Key mismatch![/red]")
+                console.print(f"   Expected: [red]{app_key}[/red]")
+                console.print(f"   Actual: [red]{verify_resp.device_keys.app_key}[/red]")
+            
+        except Exception as verify_error:
+            console.print(f"⚠️  [yellow]Could not verify keys: {verify_error}[/yellow]")
+        
+        console.print(f"\n💡 [cyan]Please check the ChirpStack Web UI 'Keys (OTAA)' tab for device {dev_eui}[/cyan]")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to refresh device keys: {e}[/red]")
+        raise typer.Exit(1)
+
+@app.command()
+def lights_on():
+    """Turn ON all lights (WS502 devices)"""
+    console.print("💡 [bold green]Turning ON all lights...[/bold green]")
+    _control_all_lights("on")
+
+@app.command()
+def lights_off():
+    """Turn OFF all lights (WS502 devices)"""
+    console.print("🔌 [bold red]Turning OFF all lights...[/bold red]")
+    _control_all_lights("off")
+
+@app.command()
+def control_light(
+    dev_eui: str = typer.Argument(..., help="Device EUI of the WS502 switch"),
+    action: str = typer.Argument(..., help="Action: 'on' or 'off'"),
+    switch: str = typer.Option("both", "--switch", "-s", help="Which switch: 'switch_1', 'switch_2', or 'both'")
+):
+    """Control a specific light switch"""
+    if action not in ["on", "off"]:
+        console.print("❌ [red]Action must be 'on' or 'off'[/red]")
+        raise typer.Exit(1)
+    
+    if switch not in ["switch_1", "switch_2", "both"]:
+        console.print("❌ [red]Switch must be 'switch_1', 'switch_2', or 'both'[/red]")
+        raise typer.Exit(1)
+    
+    console.print(f"💡 [cyan]Controlling light {dev_eui}: {action} ({switch})[/cyan]")
+    
+    if switch == "both":
+        # Send separate commands for each switch
+        _send_switch_command(dev_eui, action, "switch_1")
+        _send_switch_command(dev_eui, action, "switch_2")
+    else:
+        _send_switch_command(dev_eui, action, switch)
+
+def _control_all_lights(action):
+    """Helper function to control all WS502 light switches"""
+    try:
+        config = load_config()
+        devices = config.get('devices', [])
+        
+        # Filter for WS502 devices (smart switches)
+        ws502_devices = []
+        for device in devices:
+            # Check if device has WS502 in the name or tags
+            if ('WS502' in device.get('name', '') or 
+                'WS502' in device.get('description', '') or
+                any('WS502' in str(v) for v in device.get('tags', {}).values())):
+                ws502_devices.append(device)
+        
+        if not ws502_devices:
+            console.print("⚠️  [yellow]No WS502 light switches found in configuration[/yellow]")
+            return
+        
+        console.print(f"Found {len(ws502_devices)} light switches to control...")
+        
+        success_count = 0
+        failed_count = 0
+        
+        for device in ws502_devices:
+            try:
+                console.print(f"💡 [cyan]Controlling {device['name']} ({device['dev_eui']}): {action}[/cyan]")
+                
+                # Send separate commands for each switch since payload doesn't support both together
+                _send_switch_command(device['dev_eui'], action, "switch_1")
+                _send_switch_command(device['dev_eui'], action, "switch_2")
+                
+                success_count += 1
+            except Exception as e:
+                console.print(f"❌ [red]Failed to control {device['name']}: {e}[/red]")
+                failed_count += 1
+        
+        console.print(f"\n📊 [cyan]Summary:[/cyan]")
+        console.print(f"   Successful: [green]{success_count}[/green]")
+        console.print(f"   Failed: [red]{failed_count}[/red]")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to control lights: {e}[/red]")
+        raise typer.Exit(1)
+
+def _send_switch_command(dev_eui, action, switch_type):
+    """Send switch command to a specific device"""
+    try:
+        cli = get_client()
+        
+        # Prepare the payload - only one switch at a time
+        payload = {switch_type: action}
+        
+        # Create queue item
+        queue_item = api.DeviceQueueItem()
+        queue_item.dev_eui = dev_eui
+        queue_item.confirmed = True
+        queue_item.f_port = 85  # Standard fPort for downlink commands
+        
+        # Convert payload to JSON for the object field
+        import json
+        from google.protobuf.struct_pb2 import Struct
+        
+        # Use the object field which will be encoded by ChirpStack using the device profile codec
+        payload_struct = Struct()
+        payload_struct.update(payload)
+        queue_item.object.CopyFrom(payload_struct)
+        
+        # Enqueue the message
+        req = api.EnqueueDeviceQueueItemRequest()
+        req.queue_item.CopyFrom(queue_item)
+        
+        resp = cli.device_client.Enqueue(req, metadata=cli.get_auth_metadata())
+        
+        console.print(f"✅ [green]Command sent successfully to {dev_eui}[/green]")
+        console.print(f"   Queue ID: [cyan]{resp.id}[/cyan]")
+        console.print(f"   Switch: [cyan]{switch_type} → {action}[/cyan]")
+        console.print(f"   Payload: [cyan]{json.dumps(payload)}[/cyan]")
+        
+    except Exception as e:
+        console.print(f"❌ [red]Failed to send command to {dev_eui}: {e}[/red]")
+        raise e
+
+@app.command()
 def add_devices(
-    file: str = typer.Option("devices.json", "--file", "-f", help="JSON file with devices"),
+    from_config: bool = typer.Option(True, "--from-config", help="Load devices from config.json"),
+    file: str = typer.Option("devices.json", "--file", "-f", help="JSON file with devices (if not using config)"),
     force: bool = typer.Option(False, "--force", help="Force creation even if device exists")
 ):
-    """Add devices from JSON file"""
-    console.print(f"📱 [bold blue]Adding Devices from {file}[/bold blue]")
-    
-    if not os.path.exists(file):
-        console.print(f"❌ [red]File {file} not found[/red]")
-        raise typer.Exit(1)
+    """Add devices from config.json or JSON file"""
     
     try:
         cli = get_client()
@@ -630,11 +1178,40 @@ def add_devices(
         if not tenant_id:
             raise typer.Exit(1)
         
-        # Load devices
-        with open(file, 'r') as f:
-            devices = json.load(f)
+        # Load devices from config.json or separate file
+        if from_config:
+            console.print(f"📱 [bold blue]Adding Devices from {CONFIG_FILE}[/bold blue]")
+            config = load_config()
+            devices = config.get('devices', [])
+            # Get application info from config
+            app_name = config['chirpstack']['application_name']
+            app_description = config['chirpstack']['application_description']
+            join_eui = config['chirpstack']['join_eui']
+            app_key = config['chirpstack']['app_key']
+            
+            # Add application info to each device if not present
+            for device in devices:
+                if 'application_name' not in device:
+                    device['application_name'] = app_name
+                if 'application_description' not in device:
+                    device['application_description'] = app_description
+                if 'join_eui' not in device:
+                    device['join_eui'] = join_eui
+                if 'app_key' not in device:
+                    device['app_key'] = app_key
+        else:
+            console.print(f"📱 [bold blue]Adding Devices from {file}[/bold blue]")
+            if not os.path.exists(file):
+                console.print(f"❌ [red]File {file} not found[/red]")
+                raise typer.Exit(1)
+            with open(file, 'r') as f:
+                devices = json.load(f)
         
-        console.print(f"📂 [cyan]Loaded {len(devices)} devices from {file}[/cyan]")
+        if not devices:
+            console.print("❌ [red]No devices found in configuration[/red]")
+            raise typer.Exit(1)
+        
+        console.print(f"📂 [cyan]Loaded {len(devices)} devices from configuration[/cyan]")
         
         # Get existing applications and device profiles
         app_req = api.ListApplicationsRequest()
@@ -652,7 +1229,7 @@ def add_devices(
         device_profiles = {profile.name: profile.id for profile in profile_resp.result}
         
         created_count = 0
-        skipped_count = 0
+        updated_count = 0
         error_count = 0
         
         with Progress(
@@ -667,16 +1244,12 @@ def add_devices(
                 dev_eui = device_config['dev_eui']
                 
                 # Check if device exists
+                existing_device = None
                 try:
                     req = api.GetDeviceRequest()
                     req.dev_eui = dev_eui
-                    cli.device_client.Get(req, metadata=cli.get_auth_metadata())
-                    
-                    if not force:
-                        console.print(f"⏭️  [yellow]Skipping existing device: {device_name} ({dev_eui})[/yellow]")
-                        skipped_count += 1
-                        progress.advance(task)
-                        continue
+                    resp = cli.device_client.Get(req, metadata=cli.get_auth_metadata())
+                    existing_device = resp.device
                 except grpc.RpcError as e:
                     if e.code() != grpc.StatusCode.NOT_FOUND:
                         console.print(f"❌ [red]Error checking device {dev_eui}: {e}[/red]")
@@ -706,15 +1279,17 @@ def add_devices(
                 elif not device_profile_id:
                     console.print(f"❌ [red]Device profile not found: {device_config['device_profile_name']}[/red]")
                     error_count += 1
-                elif _create_device(cli, device_config, application_id, device_profile_id):
-                    created_count += 1
-                    console.print(f"✅ [green]Created device: {device_name} ({dev_eui})[/green]")
+                elif _create_device(cli, device_config, application_id, device_profile_id, existing_device):
+                    if existing_device:
+                        updated_count += 1
+                    else:
+                        created_count += 1
                 else:
                     error_count += 1
                 
                 progress.advance(task)
         
-        console.print(f"\n📊 [green]Summary: {created_count} created, {skipped_count} skipped, {error_count} errors[/green]")
+        console.print(f"\n📊 [green]Summary: {created_count} created, {updated_count} updated, {error_count} errors[/green]")
         
     except Exception as e:
         console.print(f"❌ [red]Failed to add devices: {e}[/red]")
@@ -738,8 +1313,8 @@ def _create_application(cli, tenant_id, app_name, app_description):
         console.print(f"❌ [red]Error creating application {app_name}: {e}[/red]")
         return None
 
-def _create_device(cli, device_config, application_id, device_profile_id):
-    """Helper function to create a device"""
+def _create_device(cli, device_config, application_id, device_profile_id, existing_device=None):
+    """Helper function to create or update a device"""
     try:
         # Create device
         device = api.Device()
@@ -760,20 +1335,51 @@ def _create_device(cli, device_config, application_id, device_profile_id):
         for key, value in device_config.get('variables', {}).items():
             device.variables[key] = value
         
-        req = api.CreateDeviceRequest()
-        req.device.CopyFrom(device)
+        if existing_device:
+            # Update existing device
+            req = api.UpdateDeviceRequest()
+            req.device.CopyFrom(device)
+            cli.device_client.Update(req, metadata=cli.get_auth_metadata())
+            console.print(f"🔄 [green]Updated device: {device_config['name']} ({device_config['dev_eui']})[/green]")
+        else:
+            # Create new device
+            req = api.CreateDeviceRequest()
+            req.device.CopyFrom(device)
+            cli.device_client.Create(req, metadata=cli.get_auth_metadata())
+            console.print(f"✅ [green]Created device: {device_config['name']} ({device_config['dev_eui']})[/green]")
         
-        cli.device_client.Create(req, metadata=cli.get_auth_metadata())
-        
-        # Create device keys for OTAA
+        # Create or update device keys for OTAA
         device_keys = api.DeviceKeys()
+        # Both dev_eui and app_key are strings according to the protobuf definition
         device_keys.dev_eui = device_config['dev_eui']
         device_keys.app_key = device_config['app_key']
+
         
-        keys_req = api.CreateDeviceKeysRequest()
-        keys_req.device_keys.CopyFrom(device_keys)
-        
-        cli.device_client.CreateKeys(keys_req, metadata=cli.get_auth_metadata())
+        try:
+            if existing_device:
+                # Try to update existing keys
+                keys_req = api.UpdateDeviceKeysRequest()
+                keys_req.device_keys.CopyFrom(device_keys)
+                cli.device_client.UpdateKeys(keys_req, metadata=cli.get_auth_metadata())
+                console.print(f"🔑 [cyan]Updated OTAA keys for device: {device_config['dev_eui']}[/cyan]")
+            else:
+                # Create new keys
+                keys_req = api.CreateDeviceKeysRequest()
+                keys_req.device_keys.CopyFrom(device_keys)
+                cli.device_client.CreateKeys(keys_req, metadata=cli.get_auth_metadata())
+                console.print(f"🔑 [cyan]Created OTAA keys for device: {device_config['dev_eui']}[/cyan]")
+        except Exception as key_error:
+            # If update fails, try to create (might be missing keys)
+            if existing_device:
+                try:
+                    keys_req = api.CreateDeviceKeysRequest()
+                    keys_req.device_keys.CopyFrom(device_keys)
+                    cli.device_client.CreateKeys(keys_req, metadata=cli.get_auth_metadata())
+                    console.print(f"🔑 [cyan]Created OTAA keys for existing device: {device_config['dev_eui']}[/cyan]")
+                except Exception as create_key_error:
+                    console.print(f"⚠️  [yellow]Warning: Could not create/update OTAA keys for {device_config['dev_eui']}: {create_key_error}[/yellow]")
+            else:
+                console.print(f"⚠️  [yellow]Warning: Could not create OTAA keys for {device_config['dev_eui']}: {key_error}[/yellow]")
         
         return True
     except Exception as e:
@@ -784,22 +1390,28 @@ def _create_device(cli, device_config, application_id, device_profile_id):
 def main(
     api_key: Optional[str] = typer.Option(None, "--api-key", help="ChirpStack API key"),
     server: Optional[str] = typer.Option(None, "--server", help="ChirpStack server URL"),
+    config_file: Optional[str] = typer.Option(None, "--config", help="Configuration file path"),
 ):
     """
     ChirpStack CLI Tool
     
     A command-line interface for managing ChirpStack gateways, device profiles, and devices.
+    
+    Configuration is loaded from config.json by default, but can be overridden with command line options.
     """
-    global API_KEY, SERVER_URL, client
+    global CONFIG_FILE, client
     
-    if api_key:
-        API_KEY = api_key
-    if server:
-        SERVER_URL = server
+    # Update config file path if provided
+    if config_file:
+        CONFIG_FILE = config_file
     
-    # Override with environment variables
-    API_KEY = os.getenv("CHIRPSTACK_API_KEY", API_KEY)
-    SERVER_URL = os.getenv("CHIRPSTACK_SERVER", SERVER_URL)
+    # Override client settings if provided via command line
+    if api_key or server:
+        config = load_config()
+        if api_key:
+            config['chirpstack']['api_key'] = api_key
+        if server:
+            config['chirpstack']['server_url'] = server
 
 if __name__ == "__main__":
     try:
