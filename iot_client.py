@@ -123,13 +123,15 @@ def format_ws502_data(decoded_data):
         electrical.append(f"⚡[{color}]{voltage}V[/{color}]")
     
     if isinstance(current, (int, float)):
-        if current < 10:
+        # WS502 current is in mA, convert to A for display
+        current_a = current / 1000
+        if current_a < 0.01:
             color = "green"
-        elif current <= 20:
+        elif current_a <= 0.02:
             color = "yellow"
         else:
             color = "red"
-        electrical.append(f"🔌[{color}]{current}A[/{color}]")
+        electrical.append(f"🔌[{color}]{current_a:.3f}A[/{color}]")
     
     if isinstance(power, (int, float)):
         if power < 1000:
@@ -182,16 +184,19 @@ def format_ct105_data(decoded_data):
     temperature = decoded_data.get('temperature')
     
     if isinstance(current, (int, float)):
-        if current < 10:
+        # CT105 current is already in Amperes (A) from decoder
+        current_a = current
+        if current_a < 0.01:
             color = "green"
-        elif current <= 20:
+        elif current_a <= 0.02:
             color = "yellow"
         else:
             color = "red"
-        measurements.append(f"🔌[{color}]{current}A[/{color}]")
+        measurements.append(f"🔌[{color}]{current_a:.3f}A[/{color}]")
     
     if isinstance(total_current, (int, float)):
-        measurements.append(f"∑[cyan]{total_current}A[/cyan]")
+        # CT105 total_current is already in Amperes (A) from decoder
+        measurements.append(f"∑[cyan]{total_current:.3f}A[/cyan]")
     
     if isinstance(temperature, (int, float)):
         if temperature < 30:
@@ -257,14 +262,23 @@ def format_sensor_value(key, value, device_profile=None):
             color = "red"
         return f"⚡ [{color}]{value}V[/{color}]"
     elif key.lower() == 'current' and isinstance(value, (int, float)):
-        # Color code current: green (<10A), yellow (10-20A), red (>20A)
-        if value < 10:
+        # Handle current units based on device type:
+        # - CT105/CT10x: Already in Amperes (A) from decoder
+        # - WS502: In milliAmperes (mA), needs conversion
+        if device_profile and ('CT105' in device_profile or 'CT10' in device_profile):
+            # CT105 current is already in Amperes
+            current_a = value
+        else:
+            # WS502 and other devices: Convert mA to A
+            current_a = value / 1000
+        
+        if current_a < 0.01:
             color = "green"
-        elif value <= 20:
+        elif current_a <= 0.02:
             color = "yellow"
         else:
             color = "red"
-        return f"🔌 [{color}]{value}A[/{color}]"
+        return f"🔌 [{color}]{current_a:.3f}A[/{color}]"
     elif key.lower() == 'active_power' and isinstance(value, (int, float)):
         # Color code power: green (<1000W), yellow (1000-2000W), red (>2000W)
         if value < 1000:
@@ -304,7 +318,8 @@ def format_sensor_value(key, value, device_profile=None):
         return ""
     # CT105 specific fields
     elif key.lower() == 'total_current' and isinstance(value, (int, float)):
-        return f"∑ [cyan]{value}A[/cyan] (Total)"
+        # CT105 total_current is already in Amperes (A) from decoder
+        return f"∑ [cyan]{value:.3f}A[/cyan] (Total)"
     elif key.lower() == 'temperature' and isinstance(value, (int, float)):
         # Standard temperature formatting
         if value < 0:
@@ -346,11 +361,18 @@ def create_gateway_table():
         active_devices = len(device_data)
         last_activity = max([data.get('last_seen', '') for data in device_data.values()]) if device_data else 'Never'
         
+        # Format location from latitude/longitude if available
+        location = "Unknown"
+        if gateway.get('latitude') and gateway.get('longitude'):
+            location = f"{gateway['latitude']:.4f}, {gateway['longitude']:.4f}"
+        elif gateway.get('tags', {}).get('location'):
+            location = gateway['tags']['location']
+        
         table.add_row(
-            gateway['id'],
+            gateway['gateway_id'],
             gateway.get('name', 'Unknown'),
             "🟢 Online",
-            gateway.get('location', 'Unknown'),
+            location,
             f"{active_devices} active",
             last_activity
         )

@@ -10,4 +10,12 @@ dependencies = [
     "rich>=14.1.0",
     "requests>=2.31.0",
     "typer>=0.16.0",
+    "google-api-python-client>=2.179.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "fastapi[all]>=0.116.1",
+    "sqlmodel>=0.0.24",
+    "pyjwt>=2.10.1",
+    "passlib>=1.7.4",
+    "bcrypt>=4.3.0",
 ]

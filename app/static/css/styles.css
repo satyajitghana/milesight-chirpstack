@@ -1,0 +1,1449 @@
+/* IoT Dashboard - Custom Tailwind CSS */
+
+/* CSS Variables for consistent theming */
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(240 10% 3.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(240 10% 3.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(240 10% 3.9%);
+  --primary: hsl(240 5.9% 10%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(240 4.8% 95.9%);
+  --secondary-foreground: hsl(240 5.9% 10%);
+  --muted: hsl(240 4.8% 95.9%);
+  --muted-foreground: hsl(240 3.8% 46.1%);
+  --accent: hsl(240 4.8% 95.9%);
+  --accent-foreground: hsl(240 5.9% 10%);
+  --destructive: hsl(0 72.22% 50.59%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(240 5.9% 90%);
+  --input: hsl(240 5.9% 90%);
+  --ring: hsl(240 5% 64.9%);
+  --radius: 0.5rem;
+}
+
+/* Component Styles */
+
+/* Card Components */
+.card {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.card-header {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  space-y: 0.375rem;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--card-foreground);
+}
+
+.card-content {
+  padding: 1.5rem;
+  padding-top: 0;
+}
+
+.card-footer {
+  padding: 1.5rem;
+  padding-top: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Button Components */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+  focus-visible: outline-none;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-default {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-default:hover:not(:disabled) {
+  background-color: hsl(240 5.9% 10% / 0.9);
+}
+
+.btn-outline {
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: hsl(240 4.8% 95.9% / 0.8);
+}
+
+.btn-destructive {
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+.btn-destructive:hover:not(:disabled) {
+  background-color: hsl(0 72.22% 50.59% / 0.9);
+}
+
+.btn-sm {
+  height: 2.25rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.btn-lg {
+  height: 2.75rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+/* Switch Button States */
+.btn-switch-on {
+  background-color: hsl(142 71% 45%);
+  color: white;
+  border: 1px solid hsl(142 71% 45%);
+}
+
+.btn-switch-on:hover:not(:disabled) {
+  background-color: hsl(142 71% 40%);
+}
+
+.btn-switch-off {
+  background-color: hsl(0 0% 60%);
+  color: white;
+  border: 1px solid hsl(0 0% 60%);
+}
+
+.btn-switch-off:hover:not(:disabled) {
+  background-color: hsl(0 0% 50%);
+}
+
+/* Badge Components */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: colors 0.15s ease-in-out;
+  focus: outline-none;
+}
+
+.badge-default {
+  border: transparent;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.badge-secondary {
+  border: transparent;
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.badge-outline {
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.badge-destructive {
+  border: transparent;
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+/* Status indicators */
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-online {
+  background-color: hsl(142 71% 45%);
+  animation: pulse 2s infinite;
+}
+
+.status-recent {
+  background-color: hsl(45 93% 47%);
+}
+
+.status-offline {
+  background-color: hsl(0 72% 50%);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 3px solid hsl(240 4.8% 95.9%);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  padding: 1rem;
+  border-radius: var(--radius);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  color: white;
+  font-weight: 500;
+  animation: slideIn 0.3s ease-out;
+}
+
+.toast.success {
+  background-color: hsl(142 71% 45%);
+}
+
+.toast.error {
+  background-color: hsl(0 72% 50%);
+}
+
+.toast.warning {
+  background-color: hsl(45 93% 47%);
+}
+
+.toast.info {
+  background-color: hsl(217 91% 60%);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0.375rem;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0.375rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(240 5.9% 90% / 0.8);
+}
+
+/* Grid layouts */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+/* Power usage styling */
+.power-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--muted);
+  border-radius: calc(var(--radius) - 2px);
+  text-align: center;
+}
+
+.power-metric-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.25rem;
+}
+
+.power-metric-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Utility classes */
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.text-destructive {
+  color: var(--destructive);
+}
+
+.border-muted {
+  border-color: var(--border);
+}
+
+.bg-muted {
+  background-color: var(--muted);
+}
+
+/* Remove all fade animations */
+.no-animation {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Override any existing animations */
+* {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+}
+
+/* Allow only specific transitions we want */
+.btn, .card {
+  transition: all 0.15s ease-in-out !important;
+}
+
+/* 3D Switch Component */
+.panel,
+.shadow-box,
+.indicators_container {
+  pointer-events: none;
+}
+
+.switch,
+.hole {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 3px;
+  box-shadow:
+    inset -4px -4px 8px rgba(0, 0, 0, 0.25),
+    inset 4px 4px 8px rgba(255, 255, 255, 0.5),
+    inset 2px 2px 2px rgba(177, 177, 177, 0.25),
+    1px 1px 1px rgba(0, 0, 0, 0.1),
+    4px 4px 2px rgba(0, 0, 0, 0.05),
+    6px 6px 3px rgba(0, 0, 0, 0.05);
+  height: 120px;
+  position: relative;
+  width: 70px;
+  margin: 0 auto;
+}
+
+.hole {
+  background-color: #bbb;
+  border-radius: 6px;
+  height: 70px;
+  left: 50%;
+  padding: 1px;
+  position: absolute;
+  top: 47%;
+  transform: translateX(-50%) translateY(-50%);
+  width: 33px;
+}
+
+.switch {
+  background-color: #fff;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+  box-shadow:
+    0 0 2px rgba(0, 0, 0, 0.75),
+    -2px -2px 2px rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.shadow-box {
+  height: 67px;
+  left: 32px;
+  overflow: hidden;
+  position: absolute;
+  width: 18px;
+  z-index: 1;
+}
+.shadow-box.top {
+  top: -4px;
+}
+
+.shadow-box.bottom {
+  top: 2px;
+}
+
+.shadow {
+  background-color: rgba(0, 0, 0, 0.33);
+  height: 50px;
+  position: absolute;
+  transition:
+    left 0.25s ease,
+    filter 0.25s ease,
+    opacity 0.25s ease,
+    transform 0.25s ease;
+  width: 55px;
+}
+.shadow.top {
+  bottom: 20px;
+  filter: blur(0px);
+  left: -60px;
+  opacity: 0.1;
+  transform: rotate(0deg);
+}
+
+.shadow.bottom {
+  bottom: 0;
+  left: -50px;
+  filter: blur(7px);
+  opacity: 1;
+  transform: rotate(-20deg);
+}
+
+.switch_top {
+  background-color: #fff;
+  box-shadow:
+    inset 0 0 3px rgba(0, 0, 0, 0.1),
+    inset 0 0 12px rgba(0, 0, 0, 0.05);
+  height: 50%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+  width: 100%;
+  z-index: 2;
+}
+
+.outsetTop {
+  background-color: #fff;
+  background-image: linear-gradient(90deg, #fff 0%, #f7f7f7 100%);
+  height: 0;
+  transition: height 0.25s ease;
+}
+
+.switch_bottom {
+  background-color: #eee;
+  box-shadow:
+    inset 0 0 3px rgba(0, 0, 0, 0.1),
+    inset 0 0 12px rgba(0, 0, 0, 0.05);
+  height: 50%;
+  left: 0;
+  position: absolute;
+  top: 50%;
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+  width: 100%;
+  z-index: 2;
+}
+
+.outsetBottom {
+  bottom: 0;
+  background-color: #fff;
+  background-image: linear-gradient(90deg, #e7e7e7 0%, #d7d7d7 100%);
+  box-shadow:
+    inset 0 0 3px rgba(0, 0, 0, 0.1),
+    inset 0 0 12px rgba(0, 0, 0, 0.05);
+  height: 7px;
+  position: absolute;
+  transition: height 0.25s ease;
+  width: 100%;
+}
+
+.input {
+  position: absolute;
+  opacity: 0;
+}
+
+.input[type="checkbox"]:checked + .hole {
+  .switch {
+    .switch_top {
+      background-color: #eee;
+      box-shadow:
+        inset 0 0 6px rgba(0, 0, 0, 0.05),
+        inset 0 0 24px rgba(0, 0, 0, 0.025),
+        inset -16px -16px 36px rgba(0, 0, 0, 0.1);
+
+      .outsetTop {
+        height: 3px;
+      }
+    }
+
+    .switch_bottom {
+      background-color: #fff;
+
+      .outsetBottom {
+        height: 0px;
+      }
+    }
+
+    .shadow.top {
+      filter: blur(7px);
+      left: -50px;
+      opacity: 1;
+      transform: rotate(20deg);
+    }
+
+    .shadow.bottom {
+      left: -60px;
+      filter: blur(0px);
+      opacity: 0.5;
+      transform: rotate(0deg);
+    }
+  }
+}
+
+.indicators_container {
+  display: flex;
+  justify-content: space-around;
+  position: relative;
+  top: 75px;
+  width: 66px;
+  left: -18px;
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgb(59, 59, 59);
+  transition:
+    background-color 0.25s ease,
+    filter 0.25s ease;
+  filter: brightness(1.5);
+}
+
+.input[type="checkbox"]:checked + .hole .indicator-on {
+  background-color: green;
+  box-shadow:
+    0 -0.06em 0.1em hsl(127.6, 100%, 23.3%) inset,
+    0 -0.15em 0.4em hsl(127.6, 100%, 27.8%) inset,
+    0 0.05em 0.05em hsl(128, 28%, 43%) inset,
+    0.05em 0 0.1em hsl(128.1, 100%, 29.2%) inset,
+    -0.05em 0 0.1em hsl(127.8, 100%, 22.5%) inset,
+    0 0.1em 0.4em hsl(128.3, 100%, 65.9%) inset;
+}
+
+.input + .hole .indicator-off {
+  background-color: red;
+  box-shadow:
+    0 -0.06em 0.1em hsl(0, 100%, 26.3%) inset,
+    0 -0.15em 0.4em hsl(0, 100%, 16.7%) inset,
+    0 0.05em 0.05em hsl(0, 100%, 46.3%) inset,
+    0.05em 0 0.1em hsl(0, 0%, 0%) inset,
+    -0.05em 0 0.1em hsl(0, 100%, 50%) inset,
+    0 0.1em 0.4em hsl(0, 100%, 46.7%) inset;
+}
+
+.input[type="checkbox"]:checked + .hole .indicator-off {
+  background-color: gray;
+  box-shadow:
+    0 -0.06em 0.1em hsl(0, 0%, 31.8%) inset,
+    0 -0.15em 0.4em hsl(0, 0%, 37.6%) inset,
+    0 0.05em 0.05em hsl(0, 0%, 49%) inset,
+    0.05em 0 0.1em hsl(0, 0%, 39%) inset,
+    -0.05em 0 0.1em hsl(0, 0%, 18.4%) inset,
+    0 0.1em 0.4em hsl(0, 0%, 51.8%) inset;
+}
+
+.input + .hole .indicator-on {
+  background-color: gray;
+  box-shadow:
+    0 -0.06em 0.1em hsl(0, 0%, 31.8%) inset,
+    0 -0.15em 0.4em hsl(0, 0%, 37.6%) inset,
+    0 0.05em 0.05em hsl(0, 0%, 49%) inset,
+    0.05em 0 0.1em hsl(0, 0%, 39%) inset,
+    -0.05em 0 0.1em hsl(0, 0%, 18.4%) inset,
+    0 0.1em 0.4em hsl(0, 0%, 51.8%) inset;
+}
+
+/* Day/Night Toggle for Light Sensors */
+#theme-toggle-button {
+  font-size: 17px;
+  position: relative;
+  display: inline-block;
+  width: 7em;
+  cursor: pointer;
+}
+
+#light-toggle {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+#container,
+#patches,
+#stars,
+#button,
+#sun,
+#moon,
+#cloud {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.25s;
+}
+
+/* night sky background */
+#light-toggle:checked + svg #container {
+  fill: #2b4360;
+}
+
+/* move button to right when checked */
+#light-toggle:checked + svg #button {
+  transform: translate(28px, 2.333px);
+}
+
+/* show/hide sun and moon based on checkbox state */
+#sun {
+  opacity: 1;
+}
+
+#light-toggle:checked + svg #sun {
+  opacity: 0;
+}
+
+#moon {
+  opacity: 0;
+}
+
+#light-toggle:checked + svg #moon {
+  opacity: 1;
+}
+
+/* show or hide background items on checkbox state */
+#cloud {
+  opacity: 1;
+}
+
+#light-toggle:checked + svg #cloud {
+  opacity: 0;
+}
+
+#stars {
+  opacity: 0;
+}
+
+#light-toggle:checked + svg #stars {
+  opacity: 1;
+}
+
+/* PIR Motion Sensor Styling */
+#motion-checkbox {
+  display: none;
+}
+
+.motion-switch {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  background-color: rgb(99, 99, 99);
+  border-radius: 50%;
+  z-index: 1;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.9em;
+  font-weight: 700;
+  color: rgb(37, 37, 37);
+  border: 2px solid rgb(126, 126, 126);
+  box-shadow: 0px 0px 3px rgb(2, 2, 2) inset;
+}
+
+.motion-svg {
+  position: relative;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motion-svg path {
+  fill: rgb(37, 37, 37);
+}
+
+#motion-checkbox:checked + .motion-switch .motion-svg {
+  filter: drop-shadow(0px 0px 3px rgb(222, 151, 255));
+}
+
+#motion-checkbox:checked + .motion-switch .motion-svg path {
+  fill: rgb(255, 255, 255);
+}
+
+#motion-checkbox:checked + .motion-switch {
+  box-shadow: 0px 0px 1px rgb(222, 151, 255) inset,
+      0px 0px 2px rgb(222, 151, 255) inset,
+      0px 0px 10px rgb(222, 151, 255) inset,
+      0px 0px 40px rgb(222, 151, 255),
+      0px 0px 100px rgb(222, 151, 255),
+      0px 0px 5px rgb(222, 151, 255);
+  border: 2px solid rgb(255, 255, 255);
+  background-color: rgb(152, 107, 172);
+  color: rgb(255, 255, 255);
+}
+
+/* Motion sensor states */
+.motion-switch.motion-detected {
+  box-shadow: 0px 0px 1px rgb(222, 151, 255) inset,
+      0px 0px 2px rgb(222, 151, 255) inset,
+      0px 0px 10px rgb(222, 151, 255) inset,
+      0px 0px 40px rgb(222, 151, 255),
+      0px 0px 100px rgb(222, 151, 255),
+      0px 0px 5px rgb(222, 151, 255);
+  border: 2px solid rgb(255, 255, 255);
+  background-color: rgb(152, 107, 172);
+  color: rgb(255, 255, 255);
+  animation: motionPulse 2s infinite;
+}
+
+@keyframes motionPulse {
+  0%, 100% {
+    box-shadow: 0px 0px 1px rgb(222, 151, 255) inset,
+        0px 0px 2px rgb(222, 151, 255) inset,
+        0px 0px 10px rgb(222, 151, 255) inset,
+        0px 0px 40px rgb(222, 151, 255),
+        0px 0px 100px rgb(222, 151, 255),
+        0px 0px 5px rgb(222, 151, 255);
+  }
+  50% {
+    box-shadow: 0px 0px 2px rgb(222, 151, 255) inset,
+        0px 0px 4px rgb(222, 151, 255) inset,
+        0px 0px 20px rgb(222, 151, 255) inset,
+        0px 0px 80px rgb(222, 151, 255),
+        0px 0px 200px rgb(222, 151, 255),
+        0px 0px 10px rgb(222, 151, 255);
+  }
+}
+
+/* Beautiful Stats Cards */
+.stats-card {
+  padding: 1.25rem;
+  background-color: #fff;
+  max-width: 350px;
+  min-width: 280px;
+  border-radius: 20px;
+  box-shadow: 8px 8px #323232;
+  border: 3px solid #323232;
+  width: 100%;
+  transition: all 0.15s ease-in-out;
+}
+
+.stats-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 10px 10px #323232;
+}
+
+.stats-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  min-height: 2.5rem;
+}
+
+/* Device cards need different alignment for 2-line titles */
+.device-title {
+  align-items: flex-start !important;
+}
+
+.stats-title .icon-container {
+  position: relative;
+  padding: 0.5rem;
+  background-color: #10B981;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-title .icon-container.devices {
+  background-color: #64748b;
+}
+
+.stats-title .icon-container.online {
+  background-color: #22c55e;
+}
+
+.stats-title .icon-container.messages {
+  background-color: #3b82f6;
+}
+
+
+
+.stats-title-text {
+  margin-left: 0.75rem;
+  color: #374151;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: 0;
+}
+
+.stats-percent {
+  margin-left: auto;
+  color: #02972f;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 14px;
+}
+
+.stats-data p {
+  margin: 0;
+  color: #1F2937;
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.stats-range {
+  position: relative;
+  background-color: #E5E7EB;
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.stats-range .fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #10B981;
+  height: 100%;
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+}
+
+.stats-range .fill.devices {
+  background-color: #64748b;
+}
+
+.stats-range .fill.online {
+  background-color: #22c55e;
+}
+
+.stats-range .fill.messages {
+  background-color: #3b82f6;
+}
+
+
+
+/* Beautiful Temperature Dial */
+.temp {
+	--angle: 0;
+	--hue: 240;
+	background-image:
+		radial-gradient(
+			100% 100% at 50% 50%,
+			hsl(var(--hue),90%,17%) 3.55em,
+			hsla(var(--hue),90%,17%,0) 3.6em
+		),
+		radial-gradient(
+			100% 100% at 50% 50%,
+			hsl(var(--hue),90%,10%),
+			hsl(var(--hue),90%,23%) 4.65em,
+			hsl(var(--hue),90%,55%) 4.85em 4.9em,
+			#17181c 5.1em 6.85em,
+			#17181c00 6.9em
+		),
+		radial-gradient(100% 100% at 50% 0,#f1f2f4,#8f95a3);
+	border-radius: 50%;
+	box-shadow: 0 -0.25em 1.5em 0.5em #0004;
+	display: flex;
+	flex-direction: column;
+	line-height: 1;
+	position: relative;
+	padding: 1em;
+	text-align: center;
+	width: 10em;
+	height: 10em;
+	margin: 0 auto;
+}
+.temp:after, .temp__dial, .temp__comet, .temp__fizz {
+	position: absolute;
+}
+.temp:after, .temp__comet, .temp__dial {
+	border-radius: inherit;
+}
+.temp:after, .temp__dial {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+.temp:after {
+	background: 
+		radial-gradient(100% 100% at 67% 17%,#fff3,#fff0 6em);
+	content: "";
+	display: block;
+	z-index: 2;
+}
+.temp__logo {
+	font-family: "Arial", sans-serif;
+	color: #abafba;
+	letter-spacing: -0.1em;
+	margin-bottom: 2.5em;
+	text-transform: lowercase;
+	transform: scaleY(1.1);
+	font-size: 0.7em;
+}
+.temp__comet {
+	background:
+		radial-gradient(
+			100% 100% at 50% 50%,
+			hsl(var(--hue),90%,10%),
+			hsl(var(--hue),90%,20%) 3.25em,
+			hsl(var(--hue),90%,17%) 3.3em 3.35em,
+			hsla(var(--hue),90%,17%,0) 3.4em
+		),
+		conic-gradient(#fff0,#fff calc(1deg * var(--angle)),#fff0 calc(1deg * var(--angle)));
+	top: calc(50% - 3.5em);
+	left: calc(50% - 3.5em);
+	width: 7em;
+	height: 7em;
+}
+.temp__fizz {
+	display: block;
+	top: calc(50% - 3.3em);
+	left: calc(50% - 3.3em);
+	width: 6.6em;
+	height: 6.6em;
+}
+.temp__label, .temp__value {
+	color: #fff;
+	font-family: "Arial", monospace;
+	position: relative;
+	z-index: 1;
+}
+.temp__label {
+	font-size: 0.5em;
+	letter-spacing: 0.3em;
+	text-transform: uppercase;
+	transform: translateX(0.15em) scaleY(0.9);
+	margin-bottom: 0.5em;
+}
+.temp__value {
+	font-size: 2.5em;
+	font-weight: bold;
+}
+.temp__dial {
+	cursor: pointer;
+	z-index: 3;
+}
+
+/* Occupancy Indicator */
+.occupancy-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.occupancy-indicator.occupied {
+  background-color: #dcfce7;
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+
+.occupancy-indicator.vacant {
+  background-color: #f8fafc;
+  border: 2px solid #e2e8f0;
+}
+
+/* Day/Night Toggle Fixes */
+.theme-toggle-button {
+  display: inline-block !important;
+  width: 7em !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.theme-toggle-button svg {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+/* Sensor Data Spacing */
+.stats-data {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stats-data .grid {
+  gap: 1rem !important;
+}
+
+.text-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Beautiful Toast UI */
+.toast-card {
+  width: 330px;
+  height: 80px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 10px 15px;
+  background-color: #ffffff;
+  box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 15px;
+  z-index: 1000;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-card.toast-fadeout {
+  animation: slideOutRight 0.3s ease-in;
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.toast-wave {
+  position: absolute;
+  transform: rotate(90deg);
+  left: -31px;
+  top: 32px;
+  width: 80px;
+  fill: #4777ff3a;
+}
+
+.toast-wave.success {
+  fill: #22c55e3a;
+}
+
+.toast-wave.error {
+  fill: #ef44443a;
+}
+
+.toast-wave.warning {
+  fill: #eab3083a;
+}
+
+.toast-icon-container {
+  width: 35px;
+  height: 35px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #4777ff48;
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+.toast-icon-container.success {
+  background-color: #22c55e48;
+}
+
+.toast-icon-container.error {
+  background-color: #ef444448;
+}
+
+.toast-icon-container.warning {
+  background-color: #eab30848;
+}
+
+.toast-icon {
+  width: 17px;
+  height: 17px;
+  color: #124fff;
+}
+
+.toast-icon.success {
+  color: #15803d;
+}
+
+.toast-icon.error {
+  color: #dc2626;
+}
+
+.toast-icon.warning {
+  color: #d97706;
+}
+
+.toast-message-text-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  flex-grow: 1;
+}
+
+.toast-message-text,
+.toast-sub-text {
+  margin: 0;
+  cursor: default;
+}
+
+.toast-message-text {
+  color: #124fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.toast-message-text.success {
+  color: #15803d;
+}
+
+.toast-message-text.error {
+  color: #dc2626;
+}
+
+.toast-message-text.warning {
+  color: #d97706;
+}
+
+.toast-sub-text {
+  font-size: 14px;
+  color: #555;
+}
+
+.toast-cross-icon {
+  width: 18px;
+  height: 18px;
+  color: #555;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.toast-cross-icon:hover {
+  color: #333;
+}
+
+/* Toast container */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast-container .toast-card {
+  pointer-events: all;
+}
+
+/* Animated Weather Widget */
+.weather-widget {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.weather-inner {
+    background-color: #DAE3FD;
+    transition: background-color 2s ease;
+    border-radius: 8px;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.weather-inner.thunder {
+    background-color: #9FA4AD;
+}
+
+.weather-inner.rain {
+    background-color: #D8D8D8;
+}
+
+.weather-inner.sun {
+    background-color: #ccccff;
+}
+
+.weather-inner.snow {
+    background-color: #E8F4FD;
+}
+
+.weather-inner.wind {
+    background-color: #E0F0E0;
+}
+
+#weather-inner {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+    width: 100%;
+    height: 100%;
+}
+
+.weather-cloud {
+    transition: fill 2s ease;
+}
+
+#weather-cloud1 {
+    fill: #efefef;
+}
+
+.thunder #weather-cloud1 {
+    fill: #9FA4AD;
+}
+
+#weather-cloud2 {
+    fill: #E6E6E6;
+}
+
+.thunder #weather-cloud2 {
+    fill: #8B8E98;
+}
+
+#weather-cloud3 {
+    fill: #D5D5D5;
+}
+
+.thunder #weather-cloud3 {
+    fill: #7B7988;
+}
+
+.weather-details {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px 0 16px;
+    color: #888;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    transition: color 2s ease;
+    pointer-events: none;
+}
+
+.thunder .weather-details {
+    color: #ddd;
+}
+
+.weather-right {
+    text-align: right;
+}
+
+#weather-location {
+    margin: 2px 0;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+#weather-summary {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.weather-temp {
+    font-size: 32px;
+    line-height: 32px;
+    font-weight: bold;
+}
+
+.weather-unit {
+    font-size: 12px;
+    line-height: 20px;
+    vertical-align: top;
+    margin-left: 2px;
+}
+
+.weather-feels {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+}
+
+.thunder .weather-feels {
+    color: #bbb;
+}
+
+.weather-metrics {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 12px 12px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.weather-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+}
+
+.weather-metric-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.weather-metric-value {
+    color: #444;
+    font-weight: 600;
+}
+
+.thunder .weather-metric-label {
+    color: #aaa;
+}
+
+.thunder .weather-metric-value {
+    color: #ccc;
+}
+
+#weather-outer, #weather-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#weather-inner {
+    z-index: 2;
+}
+
+.weather-details {
+    z-index: 3;
+}
+
+/* Custom Select Dropdown Styling */
+.appearance-none {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Ensure select dropdown arrow is hidden in all browsers */
+select.appearance-none::-ms-expand {
+  display: none;
+}
+
+/* Custom dropdown styling for grouping select */
+#grouping-select {
+  background-image: none;
+}
+
+#grouping-select:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}

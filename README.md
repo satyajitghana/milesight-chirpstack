@@ -22,6 +22,29 @@ This repository contains a complete solution for setting up [ChirpStack](https:/
 - **🔑 Key Management**: Update and refresh OTAA keys for existing devices
 - **🎛️ Device Control**: Send downlink commands to IoT devices
 
+## 📸 Dashboard Screenshots
+
+### Live IoT Dashboard
+Our beautiful web dashboard provides real-time monitoring and control of your IoT devices with an intuitive interface:
+
+![Dashboard Overview](screenshots/Screenshot%202025-08-14%20at%205.14.56%20PM.png)
+*Main dashboard showing device stats, animated weather widget, and device grouping*
+
+![Device Monitoring](screenshots/Screenshot%202025-08-14%20at%205.15.03%20PM.png)
+*Real-time sensor data display with interactive controls and status indicators*
+
+![Device Cards](screenshots/Screenshot%202025-08-14%20at%205.15.16%20PM.png)
+*Detailed device cards showing temperature, humidity, PIR sensors, and smart switch controls*
+
+### Key Dashboard Features:
+- 🌤️ **Animated Weather Widget**: Live weather data for Bangalore with beautiful animations
+- 📊 **Real-time Stats**: Device counts, online status, and message metrics
+- 🎛️ **Smart Controls**: Interactive 3D switches with 5-second disable protection
+- 📱 **Responsive Design**: Works perfectly on desktop and mobile devices
+- 🔄 **Live Updates**: WebSocket integration for instant data refresh
+- 🏷️ **Device Grouping**: Organize devices by location, function, or type
+- 🎨 **Modern UI**: Shadcn-inspired design with Tailwind CSS
+
 ## 📋 Quick Start
 
 ### 1. Start ChirpStack Server
@@ -74,6 +97,25 @@ python chirpstack_cli.py add-gateways
 python chirpstack_cli.py add-profiles  
 python chirpstack_cli.py add-devices
 ```
+
+### 4. Start the Web Dashboard (Optional)
+
+Launch the beautiful web interface for real-time monitoring and control:
+
+```bash
+# Start the web dashboard
+cd app
+uvicorn main:app --host 0.0.0.0 --port 4000 --reload
+
+# Access the dashboard at: http://localhost:4000
+# Default login: admin / admin123
+```
+
+The web dashboard provides:
+- 🌤️ Live animated weather widget
+- 📊 Real-time device statistics  
+- 🎛️ Interactive device controls
+- 📱 Responsive design for mobile/desktop
 
 ## 💡 Complete Example Workflow
 
@@ -306,12 +348,12 @@ python chirpstack_cli.py
 - **`chirpstack_configurator.py`**: Advanced configuration with detailed logging
 - **`demo.py`**: Interactive step-by-step setup guide
 
-### IoT Dashboard (`iot_client.py`)
+### IoT Terminal Dashboard (`iot_client.py`)
 
 Real-time monitoring dashboard for your IoT devices:
 
 ```bash
-# Start the live dashboard
+# Start the live terminal dashboard
 python iot_client.py
 ```
 
@@ -321,6 +363,36 @@ Features:
 - 🔋 Battery level tracking
 - 📶 Signal quality indicators
 - 🎨 Beautiful terminal UI with Rich
+
+### Web Dashboard (`app/main.py`)
+
+Modern web-based dashboard with interactive controls:
+
+```bash
+# Start the web dashboard server
+source .venv/bin/activate
+cd app
+uvicorn main:app --host 0.0.0.0 --port 4000 --reload
+```
+
+Access at: **http://localhost:4000**
+
+#### Web Dashboard Features:
+- 🌤️ **Live Weather**: Animated weather widget with real-time Bangalore weather data
+- 📊 **Device Statistics**: Real-time device counts, online status, and message metrics  
+- 🎛️ **Smart Controls**: Interactive 3D switches with optimistic updates and safety timers
+- 📱 **Responsive Design**: Beautiful UI that works on desktop and mobile
+- 🔄 **Real-time Updates**: WebSocket integration for instant data synchronization
+- 🏷️ **Device Grouping**: Organize devices by location, function, manufacturer, etc.
+- 🔐 **User Authentication**: Secure login with JWT tokens and session management
+- 🎨 **Modern Interface**: Shadcn-inspired design with smooth animations
+- 📈 **Live Sensor Data**: Temperature dials, PIR sensors, humidity, voltage, current monitoring
+- ⚡ **Switch Control**: Remote control of WS502 smart switches with visual feedback
+
+#### Authentication:
+- **Default Admin**: `admin` / `admin123`
+- **Account Creation**: Can be disabled via `ENABLE_ACCOUNT_CREATION = False`
+- **JWT Security**: Secure token-based authentication
 
 ## 📁 Configuration Files
 
@@ -377,10 +449,28 @@ chirpstack-docker/
 │   ├── chirpstack-gateway-bridge/ # Gateway bridge config
 │   ├── mosquitto/                 # MQTT broker config
 │   └── postgresql/                # Database initialization
+├── app/                           # Web Dashboard Application
+│   ├── main.py                    # FastAPI web server with authentication
+│   ├── mqtt_client.py             # MQTT integration for real-time data
+│   ├── templates/                 # HTML templates
+│   │   ├── base.html              # Base template with common elements
+│   │   ├── dashboard.html         # Main dashboard interface
+│   │   └── login.html             # User authentication page
+│   └── static/                    # Static assets
+│       ├── css/
+│       │   └── styles.css         # Tailwind CSS with custom styling
+│       ├── js/
+│       │   └── dashboard.js       # Frontend JavaScript with animations
+│       └── assets/
+│           └── Observance Logo_Blue.png  # Company logo
+├── screenshots/                   # Dashboard screenshots
+│   ├── Screenshot 2025-08-14 at 5.14.56 PM.png
+│   ├── Screenshot 2025-08-14 at 5.15.03 PM.png
+│   └── Screenshot 2025-08-14 at 5.15.16 PM.png
 ├── chirpstack_cli.py              # Main CLI tool
 ├── chirpstack_configurator.py     # Configuration library
 ├── configure_chirpstack.py        # Simple setup script
-├── iot_client.py                  # Live dashboard
+├── iot_client.py                  # Terminal dashboard
 ├── demo.py                        # Interactive setup guide
 ├── device_profiles.json           # Milesight device profiles
 ├── devices.json                   # Device configurations
@@ -388,6 +478,7 @@ chirpstack-docker/
 ├── config.json                    # Dashboard configuration
 ├── CLI_USAGE.md                   # Detailed CLI documentation
 ├── CHIRPSTACK_CONFIG.md           # Configuration guide
+├── README_WEB.md                  # Web dashboard documentation
 └── README.md                      # This file
 ```
 
