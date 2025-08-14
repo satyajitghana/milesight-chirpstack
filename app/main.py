@@ -8,7 +8,7 @@ import os
 import json
 import asyncio
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Form, WebSocket, WebSocketDisconnect
@@ -227,7 +227,7 @@ class ConnectionManager:
             "type": "device_data",
             "device_eui": device_eui,
             "data": data,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         await self.broadcast(message)
 
@@ -235,7 +235,7 @@ class ConnectionManager:
         message = json.dumps({
             "type": "stats_update",
             "stats": stats,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
         await self.broadcast(message)
 
@@ -569,7 +569,7 @@ async def get_stats(current_user: User = Depends(get_current_user)):
         "active_devices": active_devices,
         "total_messages": total_messages,
         "gateways": len(config.get('gateways', [])),
-        "last_update": datetime.now().isoformat()
+        "last_update": datetime.now(timezone.utc).isoformat()
     }
 
 def _get_device_status(live_data: Dict) -> str:
@@ -578,8 +578,18 @@ def _get_device_status(live_data: Dict) -> str:
         return "offline"
     
     try:
-        last_seen = datetime.strptime(live_data['last_seen'], '%Y-%m-%d %H:%M:%S')
-        time_diff = (datetime.now() - last_seen).seconds
+        # Handle both ISO format and the old format
+        last_seen_str = live_data['last_seen']
+        if 'T' in last_seen_str:
+            # ISO format with timezone info
+            last_seen = datetime.fromisoformat(last_seen_str.replace('Z', '+00:00'))
+        else:
+            # Old format - assume UTC
+            last_seen = datetime.strptime(last_seen_str, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        
+        # Ensure both times are timezone-aware for comparison
+        now_utc = datetime.now(timezone.utc)
+        time_diff = (now_utc - last_seen).total_seconds()
         
         if time_diff < 120:  # 2 minutes
             return "online"
@@ -604,18 +614,18 @@ def save_device_state(session: Session, device_eui: str, device_name: str, decod
         if existing_device:
             # Update existing device
             existing_device.device_name = device_name
-            existing_device.last_seen = datetime.now()
+            existing_device.last_seen = datetime.now(timezone.utc)
             existing_device.decoded_data = json.dumps(decoded_data)
             existing_device.message_count = message_count
             existing_device.rssi = rssi
             existing_device.snr = snr
-            existing_device.updated_at = datetime.now()
+            existing_device.updated_at = datetime.now(timezone.utc)
         else:
             # Create new device state
             new_device = DeviceState(
                 device_eui=device_eui,
                 device_name=device_name,
-                last_seen=datetime.now(),
+                last_seen=datetime.now(timezone.utc),
                 decoded_data=json.dumps(decoded_data),
                 message_count=message_count,
                 rssi=rssi,
@@ -643,7 +653,7 @@ def load_device_states(session: Session) -> dict:
                     'device_name': device.device_name,
                     'device_profile': 'Unknown',  # Will be updated from config
                     'message_count': device.message_count,
-                    'last_seen': device.last_seen.isoformat(),
+                    'last_seen': device.last_seen.replace(tzinfo=timezone.utc).isoformat(),
                     'decoded_data': decoded_data,
                     'rssi': device.rssi,
                     'snr': device.snr

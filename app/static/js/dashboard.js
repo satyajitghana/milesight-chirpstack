@@ -10,6 +10,11 @@ class IoTDashboard {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.disabledSwitches = new Set(); // Track switches that are in 5-second disable period
+        this.statsValues = { // Track current stats values for smooth animation
+            'total-devices': 0,
+            'active-devices': 0,
+            'total-messages': 0
+        };
         
         this.init();
         this.initAnimatedWeather();
@@ -50,6 +55,9 @@ class IoTDashboard {
                 
                 this.devices = devicesData.devices;
                 this.stats = statsData;
+                
+                // Initialize stats values on first load to avoid animation from 0
+                this.initializeStatsValues();
                 
                 this.updateDevicesGrid();
                 this.updateStatsCards();
@@ -912,18 +920,48 @@ class IoTDashboard {
         return value.toString();
     }
 
+    initializeStatsValues() {
+        // Get current DOM values to preserve any existing state
+        const elements = ['total-devices', 'active-devices', 'total-messages'];
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                // Try to get existing value from DOM, fallback to stats, then 0
+                const domValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
+                const statsValue = this.stats[id.replace('-', '_')] || 0;
+                
+                // Use the DOM value if it exists and is reasonable, otherwise use stats
+                this.statsValues[id] = domValue > 0 ? domValue : statsValue;
+                
+                // Set DOM to the tracked value to ensure consistency
+                element.textContent = this.statsValues[id].toLocaleString();
+            }
+        });
+        
+        console.log('📊 Initialized stats values:', this.statsValues);
+    }
+
     updateStatsCards() {
-        const elements = {
+        const newValues = {
             'total-devices': this.stats.total_devices || 0,
             'active-devices': this.stats.active_devices || 0,
             'total-messages': this.stats.total_messages || 0
         };
 
-        Object.entries(elements).forEach(([id, value]) => {
+        Object.entries(newValues).forEach(([id, newValue]) => {
             const element = document.getElementById(id);
             if (element) {
-                // Animate number change
-                this.animateNumber(element, parseInt(element.textContent) || 0, value);
+                const currentValue = this.statsValues[id];
+                console.log(`📊 Stats update - ${id}: ${currentValue} → ${newValue}`);
+                
+                // Only animate if the value has actually changed
+                if (currentValue !== newValue) {
+                    console.log(`🎬 Animating ${id} from ${currentValue} to ${newValue}`);
+                    this.animateNumber(element, currentValue, newValue);
+                    this.statsValues[id] = newValue; // Update tracked value
+                } else {
+                    console.log(`⏸️ No change for ${id}, skipping animation`);
+                }
             }
         });
 
@@ -970,22 +1008,36 @@ class IoTDashboard {
     }
 
     animateNumber(element, start, end) {
-        const duration = 1000; // 1 second
+        // Cancel any existing animation for this element
+        if (element.animationId) {
+            cancelAnimationFrame(element.animationId);
+        }
+        
+        const duration = 800; // Slightly faster animation
         const startTime = performance.now();
         
         const animate = (currentTime) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            const current = Math.floor(start + (end - start) * progress);
+            // Use easing function for smoother animation
+            const easeProgress = progress < 0.5 
+                ? 2 * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+            
+            const current = Math.floor(start + (end - start) * easeProgress);
             element.textContent = current.toLocaleString();
             
             if (progress < 1) {
-                requestAnimationFrame(animate);
+                element.animationId = requestAnimationFrame(animate);
+            } else {
+                // Ensure final value is exact
+                element.textContent = end.toLocaleString();
+                element.animationId = null;
             }
         };
-        
-        requestAnimationFrame(animate);
+
+        element.animationId = requestAnimationFrame(animate);
     }
 
     async toggleSwitch(devEui, action, switchType) {
@@ -1304,9 +1356,27 @@ class IoTDashboard {
         if (!timestamp || timestamp === 'Never') return 'never';
         
         try {
+            // Parse the timestamp - should handle UTC format properly
             const date = new Date(timestamp);
+            
+            // Validate the parsed date
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid timestamp:', timestamp);
+                return 'unknown';
+            }
+            
             const now = new Date();
             const diffMinutes = Math.floor((now - date) / (1000 * 60));
+            
+            // Debug logging to help troubleshoot timezone issues
+            console.log('🕒 Time calculation:', {
+                original: timestamp,
+                parsedUTC: date.toISOString(),
+                parsedLocal: date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                nowLocal: now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                diffMinutes,
+                browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            });
             
             if (diffMinutes < 1) return 'just now';
             if (diffMinutes < 60) return `${diffMinutes}m ago`;
@@ -1314,8 +1384,12 @@ class IoTDashboard {
             const diffHours = Math.floor(diffMinutes / 60);
             if (diffHours < 24) return `${diffHours}h ago`;
             
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 7) return `${diffDays}d ago`;
+            
             return date.toLocaleDateString();
-        } catch {
+        } catch (error) {
+            console.error('Error parsing timestamp:', timestamp, error);
             return 'unknown';
         }
     }
@@ -1609,9 +1683,9 @@ class AnimatedWeatherWidget {
     }
     
     onResize() {
-        this.sizes.container.width = 280; // stats card width
+        this.sizes.container.width = 320; // stats card width (restored for weather widget)
         this.sizes.container.height = 240; // weather widget height
-        this.sizes.card.width = 280;
+        this.sizes.card.width = 320;
         this.sizes.card.height = 240;
         this.sizes.card.offset = { top: 0, left: 0 };
         

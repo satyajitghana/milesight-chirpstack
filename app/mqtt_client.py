@@ -6,7 +6,7 @@ import json
 import threading
 import time
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, Callable
 import paho.mqtt.client as mqtt
 
@@ -124,7 +124,7 @@ class MQTTClient:
             
             # Update device data
             self.device_data[device_eui].update({
-                'last_seen': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'last_seen': datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 'message_count': self.device_data[device_eui]['message_count'] + 1,
                 'decoded_data': payload.get('object', {}),
                 'device_name': device_name,
