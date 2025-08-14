@@ -27,13 +27,14 @@ This repository contains a complete solution for setting up [ChirpStack](https:/
 ### Live IoT Dashboard
 Our beautiful web dashboard provides real-time monitoring and control of your IoT devices with an intuitive interface:
 
-![Dashboard Overview](screenshots/Screenshot%202025-08-14%20at%205.14.56%20PM.png)
+![Dashboard Overview](screenshots/dashboard.png)
+screenshots/Screenshot 2025-08-14 at 5.14.56 PM.png
 *Main dashboard showing device stats, animated weather widget, and device grouping*
 
-![Device Monitoring](screenshots/Screenshot%202025-08-14%20at%205.15.03%20PM.png)
+![Device Monitoring](screenshots/device-monitoring.png)
 *Real-time sensor data display with interactive controls and status indicators*
 
-![Device Cards](screenshots/Screenshot%202025-08-14%20at%205.15.16%20PM.png)
+![Device Cards](screenshots/device-cards.png)
 *Detailed device cards showing temperature, humidity, PIR sensors, and smart switch controls*
 
 ### Key Dashboard Features:
